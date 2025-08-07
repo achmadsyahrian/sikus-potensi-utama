@@ -1,26 +1,34 @@
 <script setup>
-import { Head, usePage } from '@inertiajs/vue3';
-import { reactive } from 'vue';
+import { Head, usePage, useForm } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import BaseAlert from '@/Components/BaseAlert.vue';
 import GedungUpuImage from '@/assets/img/university/gedung-upu.jpg';
 import BaseInput from '@/Components/BaseInput.vue';
+import BaseButton from '@/Components/BaseButton.vue';
+import FlashAlert from '@/Components/FlashAlert.vue';
 
 const page = usePage();
 const appName = page.props.app_name;
 
-const form = reactive({
+const form = useForm({
     email: '',
     password: '',
     remember: false,
 });
+
+const submit = () => {
+    form.post(route('login.store'), {
+        onFinish: () => form.reset('password'),
+    });
+};
 </script>
 
 <template>
-
     <Head :title="`Login - ${appName}`" />
 
     <div class="row g-0 flex-fill">
+        <FlashAlert />
+
         <div
             class="col-12 col-lg-6 col-xl-4 bg-light border-top-wide border-primary d-flex flex-column justify-content-center">
             <div class="container container-tight my-5 px-lg-5">
@@ -39,9 +47,9 @@ const form = reactive({
                 <BaseAlert type="info" title="Gunakan akun SIAKAD Anda"
                     message="Email dan password sama dengan yang digunakan di sistem SIAKAD" />
 
-                <form @submit.prevent="" autocomplete="off" novalidate>
-                    <BaseInput label="Email" type="email" placeholder="Email Anda" v-model="form.email" />
-                    <BaseInput label="Password" type="password" placeholder="Password Anda" v-model="form.password"/>
+                <form @submit.prevent="submit" autocomplete="off" novalidate>
+                    <BaseInput label="Email" type="email" placeholder="Email Anda" v-model="form.email" :error="form.errors.email" />
+                    <BaseInput label="Password" type="password" placeholder="Password Anda" v-model="form.password" :error="form.errors.password" />
 
                     <div class="mb-2">
                         <label class="form-check">
@@ -50,10 +58,9 @@ const form = reactive({
                         </label>
                     </div>
                     <div class="form-footer">
-                        <button type="submit" class="btn btn-primary w-100">Login</button>
+                        <BaseButton type="submit" label="Masuk" full :disabled="form.processing" />
                     </div>
                 </form>
-
             </div>
         </div>
         <div class="col-12 col-lg-6 col-xl-8 d-none d-lg-block">

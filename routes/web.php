@@ -1,16 +1,24 @@
 <?php
 
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('Dashboard');
-})->name('dashboard');
+Route::middleware('auth')->group(function () {
+    Route::get('/', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
 
-Route::get('/tentang-kami', function () {
-    return Inertia::render('About');
-})->name('about-us');
+    Route::get('/about-us', function () {
+        return Inertia::render('About');
+    })->name('about-us');
 
-Route::get('/login', function () {
-    return Inertia::render('Auth/Login');
-})->name('login');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    Route::resource('/users', UserController::class)->names('users');
+});
+
+
+require __DIR__ . '/auth.php';

@@ -15,6 +15,14 @@ defineProps({
     modelValue: {
         required: true,
     },
+    error: {
+        type: String,
+        default: null,
+    },
+    disabled: {
+        type: Boolean,
+        default: false,
+    }
 });
 
 defineEmits(['update:modelValue']);
@@ -26,9 +34,13 @@ defineEmits(['update:modelValue']);
         <input 
             :type="type" 
             class="form-control" 
-            :placeholder="placeholder"
+            :placeholder="placeholder" 
             :value="modelValue"
             @input="$emit('update:modelValue', $event.target.value)"
+            :disabled="disabled"
         >
+        <div v-if="error" class="text-danger text-small mt-1">
+            {{ error }}
+        </div>
     </div>
 </template>

@@ -4,8 +4,6 @@ import { Head, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
 const appName = page.props.app_name;
-
-const dummyName = 'Achmad Syahrian';
 </script>
 
 <template>
@@ -46,7 +44,7 @@ const dummyName = 'Achmad Syahrian';
                     <div class="card-body">
                         <div class="row align-items-center">
                             <div class="col">
-                                <h2 class="h1">Halo, {{ dummyName }}! 👋</h2>
+                                <h2 class="h1">Halo, {{ page.props.auth.user.name }}! 👋</h2>
                                 <p class="text-muted">
                                     Selamat datang kembali di SIKUS. Silakan kelola dan pantau seluruh kuesioner Anda
                                     dari sini.

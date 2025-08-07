@@ -38,10 +38,10 @@
     <script src="https://kit.fontawesome.com/4dc3168260.js" crossorigin="anonymous"></script>
     
     <!-- Libs JS -->
-    <script src="{{ asset('assets/libs/apexcharts/dist/apexcharts.min.js?1684106062') }}" defer></script>
-    <script src="{{ asset('assets/libs/jsvectormap/dist/js/jsvectormap.min.js?1684106062') }}" defer></script>
-    <script src="{{ asset('assets/libs/jsvectormap/dist/maps/world.js?1684106062') }}" defer></script>
-    <script src="{{ asset('assets/libs/jsvectormap/dist/maps/world-merc.js?1684106062') }}" defer></script>
+    {{-- <script src="{{ asset('assets/libs/apexcharts/dist/apexcharts.min.js?1684106062') }}" defer></script> --}}
+    {{-- <script src="{{ asset('assets/libs/jsvectormap/dist/js/jsvectormap.min.js?1684106062') }}" defer></script> --}}
+    {{-- <script src="{{ asset('assets/libs/jsvectormap/dist/maps/world.js?1684106062') }}" defer></script>
+    <script src="{{ asset('assets/libs/jsvectormap/dist/maps/world-merc.js?1684106062') }}" defer></script> --}}
     <!-- Tabler Core -->
     <script src="{{ asset('assets/js/tabler.min.js?1684106062') }}" defer></script>
     <script src="{{ asset('assets/js/demo.min.js?1684106062') }}" defer></script>
@@ -356,7 +356,7 @@
         });
         // @formatter:on
     </script>
-    <script>
+    {{-- <script>
         // @formatter:on
         document.addEventListener("DOMContentLoaded", function() {
             const map = new jsVectorMap({
@@ -566,7 +566,7 @@
             });
         });
         // @formatter:off
-    </script>
+    </script> --}}
     <script>
         // @formatter:off
         document.addEventListener("DOMContentLoaded", function() {
