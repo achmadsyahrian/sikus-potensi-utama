@@ -1,10 +1,15 @@
 <script setup>
 import BaseInput from '@/Components/BaseInput.vue';
 import BaseButton from '@/Components/BaseButton.vue';
+import { Link } from '@inertiajs/vue3';
 
 const props = defineProps({
     form: Object,
     roles: Array,
+    disabled: {
+        type: Boolean,
+        default: false,
+    }
 });
 
 defineEmits(['submit']);
@@ -17,10 +22,12 @@ defineEmits(['submit']);
             <p class="card-subtitle">Informasi dasar pengguna.</p>
             <div class="row g-3">
                 <div class="col-md">
-                    <BaseInput label="Nama Lengkap" type="text" v-model="form.name" :error="form.errors.name" />
+                    <BaseInput label="Nama Lengkap" type="text" v-model="form.name" :error="form.errors.name"
+                        :disabled="disabled" />
                 </div>
                 <div class="col-md">
-                    <BaseInput label="Alamat Email" type="email" v-model="form.email" :error="form.errors.email" />
+                    <BaseInput label="Alamat Email" type="email" v-model="form.email" :error="form.errors.email"
+                        :disabled="disabled" />
                 </div>
             </div>
 
@@ -32,7 +39,9 @@ defineEmits(['submit']);
                         <label v-for="role in props.roles" :key="role.id" class="form-selectgroup-item">
                             <input type="checkbox" :value="role.id" class="form-selectgroup-input" v-model="form.roles">
                             <span class="form-selectgroup-label d-flex align-items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-check" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-check"
+                                    width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                                    fill="none" stroke-linecap="round" stroke-linejoin="round">
                                     <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                                     <path d="M5 12l5 5l10 -10"></path>
                                 </svg>
@@ -51,7 +60,11 @@ defineEmits(['submit']);
         </div>
 
         <div class="card-footer bg-transparent mt-auto text-end">
-            <BaseButton type="submit" label="Simpan Pengguna" variant="primary" :disabled="form.processing" />
+            <Link :href="route('users.index')" class="me-2">
+                <BaseButton type="button" label="Kembali" variant="secondary" outline />
+            </Link>
+            <BaseButton type="submit" label="Simpan Pengguna" variant="primary"
+                :disabled="form.processing" />
         </div>
     </form>
 </template>

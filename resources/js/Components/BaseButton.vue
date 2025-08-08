@@ -6,7 +6,7 @@ defineProps({
     },
     label: {
         type: String,
-        required: true,
+        default: '',
     },
     variant: {
         type: String,
@@ -32,6 +32,7 @@ defineProps({
             outline ? `btn-outline-${variant}` : `btn-${variant}`
         ]"
     >
-        {{ label }}
+        <span v-if="label">{{ label }}</span>
+        <slot v-else />
     </button>
 </template>

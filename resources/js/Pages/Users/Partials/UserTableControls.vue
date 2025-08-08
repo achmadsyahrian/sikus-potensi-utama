@@ -16,15 +16,6 @@ const emit = defineEmits(['update:search', 'update:selectedRole']);
 <template>
     <div class="card mb-3">
         <div class="card-body d-flex flex-column flex-md-row align-items-md-center">
-            <!-- Tombol Refresh -->
-            <BaseButton type="button" variant="secondary" outline label="Refresh" class="me-md-2 mb-2 mb-md-0" @click="handleRefresh">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                    <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"></path>
-                    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
-                </svg>
-            </BaseButton>
-
             <!-- Filter by Role -->
             <select
                 class="form-select w-md-auto me-md-2 mb-2 mb-md-0"
@@ -53,6 +44,15 @@ const emit = defineEmits(['update:search', 'update:selectedRole']);
                     </svg>
                 </span>
             </div>
+            
+            <!-- Tombol Refresh -->
+            <BaseButton type="button" variant="secondary" outline label="Refresh" class="me-md-2 mb-2 mb-md-0" @click="handleRefresh">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                    <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"></path>
+                    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
+                </svg>
+            </BaseButton>
             
             <!-- Tombol Tambah Pengguna -->
             <Link :href="route('users.create')">

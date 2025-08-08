@@ -1,46 +1,40 @@
 <script setup>
-defineProps({
-    label: {
-        type: String,
-        required: true,
-    },
+import { computed } from 'vue';
+
+const props = defineProps({
+    label: String,
     type: {
         type: String,
         default: 'text',
     },
-    placeholder: {
-        type: String,
-        default: '',
-    },
-    modelValue: {
-        required: true,
-    },
-    error: {
-        type: String,
-        default: null,
-    },
+    modelValue: [String, Number, Boolean],
+    error: String,
     disabled: {
         type: Boolean,
         default: false,
     }
 });
 
-defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue']);
+
+const computedValue = computed({
+    get: () => props.modelValue,
+    set: (value) => {
+        emit('update:modelValue', value);
+    }
+});
 </script>
 
 <template>
-    <div class="mb-3">
-        <label class="form-label">{{ label }}</label>
-        <input 
-            :type="type" 
-            class="form-control" 
-            :placeholder="placeholder" 
-            :value="modelValue"
-            @input="$emit('update:modelValue', $event.target.value)"
+    <div>
+        <label v-if="label" class="form-label">{{ label }}</label>
+        <input
+            :type="type"
+            class="form-control"
+            :class="{ 'is-invalid': error }"
+            v-model="computedValue"
             :disabled="disabled"
-        >
-        <div v-if="error" class="text-danger text-small mt-1">
-            {{ error }}
-        </div>
+        />
+        <div v-if="error" class="invalid-feedback">{{ error }}</div>
     </div>
 </template>
