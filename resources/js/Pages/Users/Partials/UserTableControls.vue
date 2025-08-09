@@ -46,22 +46,16 @@ const emit = defineEmits(['update:search', 'update:selectedRole']);
             </div>
             
             <!-- Tombol Refresh -->
-            <BaseButton type="button" variant="secondary" outline label="Refresh" class="me-md-2 mb-2 mb-md-0" @click="handleRefresh">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                    <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"></path>
-                    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
-                </svg>
+            <BaseButton type="button" variant="secondary" outline class="me-md-2 mb-2 mb-md-0" @click="handleRefresh">
+                <i class="fa-solid fa-arrow-rotate-right me-2"></i>
+                Refresh
             </BaseButton>
             
             <!-- Tombol Tambah Pengguna -->
             <Link :href="route('users.create')">
-                <BaseButton type="button" variant="primary" label="Tambah Pengguna" full>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                        <path d="M12 5l0 14"></path>
-                        <path d="M5 12l14 0"></path>
-                    </svg>
+                <BaseButton type="button" variant="primary" full>
+                    <i class="fa-solid fa-plus me-2"></i>
+                    Tambah Pengguna
                 </BaseButton>
             </Link>
         </div>

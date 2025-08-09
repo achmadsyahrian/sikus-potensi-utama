@@ -18,16 +18,16 @@ defineEmits(['submit']);
 <template>
     <form @submit.prevent="$emit('submit')">
         <div class="card-body">
-            <h3 class="card-title">Informasi Dasar</h3>
-            <p class="card-subtitle">Informasi dasar pengguna.</p>
+            <h3 class="card-title text-primary">Informasi Dasar</h3>
+            <p class="card-subtitle mb-4">Informasi dasar pengguna.</p>
             <div class="row g-3">
                 <div class="col-md">
                     <BaseInput label="Nama Lengkap" type="text" v-model="form.name" :error="form.errors.name"
-                        :disabled="disabled" />
+                        :disabled="disabled" required/>
                 </div>
                 <div class="col-md">
                     <BaseInput label="Alamat Email" type="email" v-model="form.email" :error="form.errors.email"
-                        :disabled="disabled" />
+                        :disabled="disabled" required/>
                 </div>
             </div>
 

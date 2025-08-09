@@ -62,21 +62,15 @@ const handleSync = () => {
             </div>
 
             <!-- Tombol Refresh -->
-            <BaseButton type="button" variant="secondary" outline label="Refresh" class="me-md-2 mb-2 mb-md-0"
+            <BaseButton type="button" variant="secondary" outline class="me-md-2 mb-2 mb-md-0"
                 @click="handleRefresh">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
-                    stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
-                    stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                    <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"></path>
-                    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
-                </svg>
+                 <i class="fa-solid fa-arrow-rotate-right me-2"></i>
+                Refresh
             </BaseButton>
 
             <!-- Tombol Sinkronisasi -->
             <BaseButton
                 type="button"
-                label="Sinkronisasi Data"
                 variant="primary"
                 :disabled="isSyncing"
                 data-bs-toggle="modal"

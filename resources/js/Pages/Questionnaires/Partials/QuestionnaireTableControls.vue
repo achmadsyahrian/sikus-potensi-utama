@@ -1,5 +1,5 @@
 <script setup>
-import { router } from '@inertiajs/vue3';
+import { router, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import BaseButton from '@/Components/BaseButton.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
@@ -16,7 +16,7 @@ const confirmModal = ref(null);
 
 const handleSearch = debounce(() => {
     router.get(
-        route('faculties.index'),
+        route('questionnaires.index'),
         { search: search.value },
         { preserveState: true, replace: true }
     );
@@ -24,24 +24,13 @@ const handleSearch = debounce(() => {
 
 const handleRefresh = () => {
     search.value = '';
-    router.get(route('faculties.index'), {}, { preserveState: true, replace: true });
+    router.get(route('questionnaires.index'), {}, { preserveState: true, replace: true });
 };
 
 watch(search, () => {
     handleSearch();
 }, { immediate: false });
 
-const handleSync = () => {
-    isSyncing.value = true;
-    router.post(route('faculties.sync'), {}, {
-        onSuccess: () => {
-            isSyncing.value = false;
-        },
-        onError: () => {
-            isSyncing.value = false;
-        }
-    });
-};
 </script>
 
 <template>
@@ -68,26 +57,13 @@ const handleSync = () => {
                 Refresh
             </BaseButton>
 
-            <!-- Tombol Sinkronisasi -->
-            <BaseButton
-                type="button"
-                variant="primary"
-                :disabled="isSyncing"
-                data-bs-toggle="modal"
-                data-bs-target="#confirmModal"
-            >
-                <i class="fa-solid fa-sync me-2"></i>
-                <span v-if="isSyncing">Sinkronisasi...</span>
-                <span v-else>Sinkronisasi Data</span>
-            </BaseButton>
+            <!-- Tombol Tambah Kuesioner -->
+            <Link :href="route('questionnaires.create')">
+                <BaseButton type="button" variant="primary" full>
+                    <i class="fa-solid fa-plus me-2"></i>
+                    Tambah Kuesioner
+                </BaseButton>
+            </Link>
         </div>
     </div>
-    <ConfirmModal
-        id="confirmModal"
-        title="Sinkronisasi Data"
-        message="Apakah Anda yakin ingin melakukan sinkronisasi data fakultas? Ini akan memperbarui data dari SIAKAD."
-        confirmText="Ya, Sinkronisasi"
-        confirmVariant="primary"
-        @confirm="handleSync"
-    />
 </template>

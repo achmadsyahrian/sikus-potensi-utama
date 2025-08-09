@@ -22,6 +22,10 @@ const hasSlot = (name) => {
     return !!slots[name];
 };
 
+const getNestedValue = (obj, path) => {
+    return path.split('.').reduce((acc, part) => (acc && acc[part] !== undefined) ? acc[part] : null, obj);
+};
+
 const visibleLinks = computed(() => {
     if (!props.data.links) {
         return [];
@@ -31,24 +35,16 @@ const visibleLinks = computed(() => {
     const current = props.data.current_page;
     const last = props.data.last_page;
 
-    // Ambil tombol Previous dan Next
     const prevLink = links.shift();
     const nextLink = links.pop();
 
-    // Ambil halaman pertama dan terakhir
-    const first = { label: "1", url: links.find(l => l.label === "1")?.url, active: current === 1 };
-    const lastLink = { label: String(last), url: links.find(l => l.label === String(last))?.url, active: current === last };
-
-    // Kalau cuma 1 halaman → langsung return satu halaman aja
     if (last === 1) {
-        return [first];
+        return [{ label: "1", url: links.find(l => l.label === "1")?.url, active: current === 1 }];
     }
 
-    // Tentukan range sekitar halaman aktif
     let start = Math.max(2, current - 2);
     let end = Math.min(last - 1, current + 2);
 
-    // Buat array halaman tengah
     const middle = [];
     for (let i = start; i <= end; i++) {
         middle.push({
@@ -58,24 +54,32 @@ const visibleLinks = computed(() => {
         });
     }
 
-    // Sisipkan "..." bila ada gap dari halaman pertama ke tengah
     if (start > 2) {
         middle.unshift({ label: "...", url: null });
     }
 
-    // Sisipkan "..." bila ada gap dari tengah ke halaman terakhir
     if (end < last - 1) {
         middle.push({ label: "...", url: null });
     }
 
-    // Gabungkan semua link
-    return [
+    const finalLinks = [
         prevLink,
-        first,
         ...middle,
-        lastLink,
         nextLink
     ];
+
+    const first = { label: "1", url: links.find(l => l.label === "1")?.url, active: current === 1 };
+    const lastLink = { label: String(last), url: links.find(l => l.label === String(last))?.url, active: current === last };
+
+    if (first.label !== '1' && first.label !== '...') {
+        finalLinks.splice(1, 0, { label: "...", url: null });
+    }
+
+    if (lastLink.label !== String(last) && lastLink.label !== '...') {
+        finalLinks.splice(-1, 0, { label: "...", url: null });
+    }
+
+    return finalLinks.filter(Boolean);
 });
 
 
@@ -102,7 +106,7 @@ const visibleLinks = computed(() => {
                         <template v-if="hasSlot(`cell(${column.key})`)">
                             <slot :name="`cell(${column.key})`" :item="item" :index="index"></slot>
                         </template>
-                        <span v-else>{{ item[column.key] || '-' }}</span>
+                        <span v-else>{{ getNestedValue(item, column.key) || '-' }}</span>
                     </td>
                     <td v-if="actions.length > 0 || hasSlot('cell(actions)')">
                         <slot name="cell(actions)" :item="item"></slot>

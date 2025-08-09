@@ -15,7 +15,6 @@ const page = usePage();
 const appName = page.props.app_name;
 
 const lastSyncedAt = computed(() => {
-    console.log(props.programStudies);
     if (props.programStudies && props.programStudies.data && props.programStudies.data.length > 0) {
         return props.programStudies.data[0].formatted_last_synced_at;
     }

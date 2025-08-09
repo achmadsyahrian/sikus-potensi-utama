@@ -12,6 +12,10 @@ const props = defineProps({
     disabled: {
         type: Boolean,
         default: false,
+    },
+    required: {
+        type: Boolean,
+        default: false,
     }
 });
 
@@ -27,7 +31,7 @@ const computedValue = computed({
 
 <template>
     <div>
-        <label v-if="label" class="form-label">{{ label }}</label>
+        <label v-if="label" class="form-label" :class="{'required': required}">{{ label }}</label>
         <input
             :type="type"
             class="form-control"
