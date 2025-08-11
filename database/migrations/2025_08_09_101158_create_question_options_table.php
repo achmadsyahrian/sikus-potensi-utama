@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('question_options', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('question_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('questionnaire_id')->constrained()->cascadeOnDelete();
             $table->string('option_text');
             $table->integer('option_value');
             $table->integer('order');

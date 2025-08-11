@@ -11,14 +11,14 @@ class QuestionOption extends Model
     use HasFactory;
 
     protected $fillable = [
-        'question_id',
+        'questionnaire_id',
         'option_text',
         'option_value',
         'order',
     ];
 
-    public function question(): BelongsTo
+    public function questionnaire(): BelongsTo
     {
-        return $this->belongsTo(Question::class);
+        return $this->belongsTo(Questionnaire::class);
     }
 }

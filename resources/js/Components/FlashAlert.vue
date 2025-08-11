@@ -1,41 +1,39 @@
 <script setup>
-import { nextTick, ref, watch, onUpdated } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 
 const page = usePage();
-const flashMessage = ref(null);
+const flashData = ref(null); // Ubah nama variabel untuk menghindari kebingungan
 let timeout;
 
-const hideAlert = () => {
-    flashMessage.value = null;
-};
-
-const showFlash = async () => {
-    const newFlash = page.props.flash;
+const showFlash = (newFlash) => {
+    // Kosongkan timeout yang sudah ada untuk menghindari tumpang tindih
     clearTimeout(timeout);
-    flashMessage.value = null;
-
-    await nextTick();
-
-    flashMessage.value = null;
+    // Reset flash data
+    flashData.value = null;
 
     if (newFlash.success) {
-        flashMessage.value = { type: 'success', message: newFlash.success };
+        flashData.value = { type: 'success', message: newFlash.success };
     } else if (newFlash.error) {
-        flashMessage.value = { type: 'danger', message: newFlash.error };
+        flashData.value = { type: 'danger', message: newFlash.error };
     }
 
-    if (flashMessage.value) {
-        timeout = setTimeout(hideAlert, 5000);
+    if (flashData.value) {
+        // Atur timeout baru untuk menyembunyikan notifikasi setelah 5 detik
+        timeout = setTimeout(() => {
+            flashData.value = null;
+            // Penting: Hapus flash dari props Inertia agar tidak muncul lagi saat navigasi
+            page.props.flash = {};
+        }, 5000);
     }
 };
 
-onUpdated(() => {
-    showFlash();
-});
-
-watch(() => page.props.flash, () => {
-    showFlash();
+// Pantau perubahan pada props flash dari Inertia
+watch(() => page.props.flash, (newFlash, oldFlash) => {
+    // Pastikan newFlash bukan objek kosong, karena redirect akan membuatnya kosong
+    if (newFlash && (newFlash.success || newFlash.error)) {
+        showFlash(newFlash);
+    }
 }, { immediate: true });
 </script>
 
@@ -45,36 +43,37 @@ watch(() => page.props.flash, () => {
             enter-active-class="flash-notification-enter"
             leave-active-class="flash-notification-leave"
         >
-            <div v-if="flashMessage" :class="`flash-notification flash-notification-${flashMessage.type}`" role="alert">
+            <div v-if="flashData" :class="`flash-notification flash-notification-${flashData.type}`" role="alert">
                 <div class="flash-notification-content">
                     <div class="flash-notification-icon">
-                        <template v-if="flashMessage.type === 'success'">
+                        <template v-if="flashData.type === 'success'">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                                 <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
                             </svg>
                         </template>
-                        <template v-else-if="flashMessage.type === 'danger'">
+                        <template v-else-if="flashData.type === 'danger'">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                                 <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z" clip-rule="evenodd" />
                             </svg>
                         </template>
                     </div>
                     <div class="flash-notification-message">
-                        {{ flashMessage.message }}
+                        {{ flashData.message }}
                     </div>
-                    <button type="button" class="flash-notification-close" @click="hideAlert" aria-label="Close">
+                    <button type="button" class="flash-notification-close" @click="flashData = null; clearTimeout(timeout)" aria-label="Close">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
                         </svg>
                     </button>
                 </div>
-                <div class="flash-notification-progress" v-if="flashMessage"></div>
+                <div class="flash-notification-progress" v-if="flashData"></div>
             </div>
         </Transition>
     </div>
 </template>
 
 <style>
+/* CSS tetap sama */
 .flash-notification-container {
     position: fixed;
     top: 1rem;

@@ -1,9 +1,12 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import QuestionnaireForm from './Partials/QuestionnaireForm.vue';
 import QuestionnaireMenu from './Partials/QuestionnaireMenu.vue';
+import QuestionnaireCategory from './Partials/QuestionnaireCategory.vue';
+import QuestionnaireOption from './Partials/QuestionnaireOption.vue'; // Import komponen baru
+import BaseButton from '@/Components/BaseButton.vue';
 
 const props = defineProps({
     questionnaire: Object,
@@ -27,8 +30,6 @@ const form = useForm({
     })),
 });
 
-// console.log(form)
-
 const activeMenu = ref('basic');
 const isEditing = ref(false);
 
@@ -42,7 +43,6 @@ const update = () => {
 </script>
 
 <template>
-
     <Head :title="`Detail Kuesioner: ${questionnaire.name}`" />
 
     <AuthenticatedLayout>
@@ -72,13 +72,18 @@ const update = () => {
                             :faculties="faculties" :programStudies="programStudies" @submit="update"
                             :is-disabled="!isEditing" :is-editing="isEditing" @edit-toggle="isEditing = !isEditing" />
                     </div>
+                    <div v-else-if="activeMenu === 'categories'">
+                        <QuestionnaireCategory :questionnaire="questionnaire"
+                            :questionCategories="questionnaire.categories" />
+                    </div>
+                    <div v-else-if="activeMenu === 'options'">
+                        <QuestionnaireOption :questionnaire="questionnaire"
+                            :questionOptions="questionnaire.options" />
+                    </div>
                     <div v-else-if="activeMenu === 'questions'">
-                        <!-- Tampilan untuk pertanyaan akan diletakkan di sini nanti -->
                         <div class="card-body">
-                            <h5 class="card-title text-primary">Manajemen Pertanyaan</h5>
-                            <p>Halaman ini akan berisi form dinamis untuk mengelola kategori dan pertanyaan
-                                kuesioner.
-                            </p>
+                            <h5 class="card-title text-primary">Pertanyaan Kuesioner</h5>
+                            <p>Halaman ini akan menampilkan daftar pertanyaan kuesioner.</p>
                         </div>
                     </div>
                     <div v-else-if="activeMenu === 'results'">

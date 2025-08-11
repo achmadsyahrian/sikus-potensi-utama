@@ -16,7 +16,8 @@ return new class extends Migration
             $table->foreignId('questionnaire_id')->constrained()->cascadeOnDelete();
             $table->foreignId('category_id')->nullable()->constrained('question_categories')->nullOnDelete();
             $table->text('question_text');
-            $table->enum('question_type', ['text', 'rating', 'multiple_choice']);
+            $table->enum('question_type', ['multiple_choice', 'text']);
+            $table->integer('order');
             $table->boolean('is_required')->default(true);
             $table->timestamps();
         });

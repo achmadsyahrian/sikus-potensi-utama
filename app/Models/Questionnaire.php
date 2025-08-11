@@ -21,7 +21,7 @@ class Questionnaire extends Model
         'end_date',
     ];
 
-    protected $with = ['academicPeriod', 'targets', 'categories'];
+    protected $with = ['academicPeriod', 'targets', 'categories', 'options'];
 
     protected $appends = [
         'formatted_start_date',
@@ -41,6 +41,11 @@ class Questionnaire extends Model
     public function categories(): HasMany
     {
         return $this->hasMany(QuestionCategory::class);
+    }
+
+    public function options(): HasMany
+    {
+        return $this->hasMany(QuestionOption::class);
     }
 
     public function questions(): HasMany

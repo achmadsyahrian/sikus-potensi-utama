@@ -81,8 +81,6 @@ const visibleLinks = computed(() => {
 
     return finalLinks.filter(Boolean);
 });
-
-
 </script>
 
 <template>
@@ -95,10 +93,14 @@ const visibleLinks = computed(() => {
                 </tr>
             </thead>
             <tbody>
-                <tr v-if="!data.data.length">
+                <slot name="before-tbody"></slot>
+
+                <tr v-if="data.data.length === 0">
                     <td :colspan="columns.length + (actions.length > 0 || hasSlot('cell(actions)') ? 1 : 0)"
                         class="text-center text-muted">
-                        Tidak ada data yang tersedia.
+                        <slot name="no-data">
+                            Tidak ada data yang tersedia.
+                        </slot>
                     </td>
                 </tr>
                 <tr v-for="(item, index) in data.data" :key="item.id">
@@ -115,7 +117,7 @@ const visibleLinks = computed(() => {
             </tbody>
         </table>
     </div>
-    <div class="card-footer d-flex align-items-center">
+    <div v-if="data.last_page > 1" class="card-footer d-flex align-items-center">
         <p class="m-0 text-muted">Menampilkan {{ data.from || 0 }} sampai {{ data.to || 0 }} dari {{ data.total || 0 }}
             entri</p>
         <ul class="pagination m-0 ms-auto">
@@ -138,7 +140,7 @@ const visibleLinks = computed(() => {
                         <path d="M9 6l6 6l-6 6"></path>
                     </svg>
                 </span>
-                <span v-else>{{ link.label }}</span>
+                <span v-else v-html="link.label"></span>
                 </Link>
                 <span v-else class="page-link">
                     <span v-if="link.label.includes('Previous')">
@@ -157,7 +159,7 @@ const visibleLinks = computed(() => {
                             <path d="M9 6l6 6l-6 6"></path>
                         </svg>
                     </span>
-                    <span v-else>{{ link.label }}</span>
+                    <span v-else v-html="link.label"></span>
                 </span>
             </li>
         </ul>
