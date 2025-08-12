@@ -2,8 +2,25 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import EmptyAvatar from '../../Components/EmptyAvatar.vue';
+import { computed } from 'vue';
 
 const page = usePage();
+
+const activeRole = computed(() => {
+    const activeRoleId = page.props.auth.activeRoleId;
+    if (activeRoleId) {
+        return page.props.auth.user.roles.find(role => role.id === activeRoleId);
+    }
+    return page.props.auth.user.roles[0];
+});
+
+const hasRole = (roleName) => {
+    return activeRole.value?.slug === roleName;
+};
+
+const isSuperadmin = computed(() => hasRole('superadmin'));
+const isAdmin = computed(() => hasRole('admin'));
+const isUser = computed(() => ['dosen', 'pegawai', 'mahasiswa', 'mitra'].includes(activeRole.value?.slug));
 </script>
 
 <template>
@@ -21,6 +38,7 @@ const page = usePage();
 
             <div class="navbar-nav flex-row order-md-last">
                 <div class="d-none d-md-flex">
+                    <!-- Notification Dropdown -->
                     <div class="nav-item dropdown d-none d-md-flex me-3">
                         <a href="#" class="nav-link px-0" data-bs-toggle="dropdown" tabindex="-1"
                             aria-label="Show notifications">
@@ -79,13 +97,15 @@ const page = usePage();
                             <div class="text-capitalize">{{ page.props.auth.user.name }}</div>
                             <div class="mt-1 small text-muted">
                                 <template v-if="page.props.auth.user.roles && page.props.auth.user.roles.length > 0">
-                                    {{ page.props.auth.user.roles[0].name }}
+                                    <span v-if="activeRole">{{ activeRole.name }}</span>
+                                    <span v-else>{{ page.props.auth.user.roles[0].name }}</span>
                                 </template>
                             </div>
                         </div>
                     </a>
                     <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
                         <Link :href="route('profile.edit')" class="dropdown-item">Profil Saya</Link>
+                        <Link :href="route('role-selection.index')" class="dropdown-item">Pilih Peran</Link>
                         <div class="dropdown-divider"></div>
                         <Link :href="route('logout')" method="post" class="dropdown-item" as="button">Logout</Link>
                     </div>
@@ -95,6 +115,7 @@ const page = usePage();
             <div class="collapse navbar-collapse" id="navbar-menu">
                 <div class="d-flex flex-column flex-md-row flex-fill align-items-stretch align-items-md-center">
                     <ul class="navbar-nav">
+                        <!-- Menu Home -->
                         <li class="nav-item">
                             <Link class="nav-link" :href="route('dashboard')">
                             <span class="nav-link-icon d-md-none d-lg-inline-block">
@@ -108,45 +129,46 @@ const page = usePage();
                                 </svg>
                             </span>
                             <span class="nav-link-title">
-                                Home
+                                Beranda
                             </span>
                             </Link>
                         </li>
 
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#navbar-kuesioner" data-bs-toggle="dropdown"
-                                data-bs-auto-close="outside" role="button" aria-expanded="false">
-                                <span class="nav-link-icon d-md-none d-lg-inline-block">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        class="icon icon-tabler icons-tabler-outline icon-tabler-file-text">
-                                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                        <path d="M14 3v4a1 1 0 0 0 1 1h4" />
-                                        <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
-                                        <path d="M9 11h6" />
-                                        <path d="M9 15h6" />
-                                    </svg>
-                                </span>
-                                <span class="nav-link-title">
-                                    Manajemen Kuesioner
-                                </span>
-                            </a>
-                            <div class="dropdown-menu">
-                                <div class="dropdown-menu-columns">
-                                    <div class="dropdown-menu-column">
-                                        <Link class="dropdown-item" :href="route('questionnaires.index')">
-                                            Daftar Kuesioner
-                                        </Link>
-                                        <a class="dropdown-item" href="#">
-                                            Hasil Kuesioner
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
+                        <!-- Menu Manajemen Kuesioner (Untuk Admin & Superadmin) -->
+                        <li class="nav-item" v-if="isAdmin || isSuperadmin">
+                            <Link class="nav-link" :href="route('questionnaires.index')">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    class="icon icon-tabler icons-tabler-outline icon-tabler-file-text">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+                                    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+                                    <path d="M9 11h6" />
+                                    <path d="M9 15h6" />
+                                </svg>
+                            </span>
+                            <span class="nav-link-title">
+                                Manajemen Kuesioner
+                            </span>
+                            </Link>
                         </li>
 
-                        <li class="nav-item dropdown">
+                        <!-- Menu Daftar Kuesioner (Untuk Pengguna) -->
+                        <li class="nav-item" v-if="isUser || isSuperadmin">
+                            <Link class="nav-link" href="#">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                <i class="fa-solid fa-list-check"></i>
+                            </span>
+                            <span class="nav-link-title">
+                                Daftar Kuesioner
+                            </span>
+                            </Link>
+                        </li>
+
+                        <!-- Menu Data Master (Untuk Admin & Superadmin) -->
+                        <li class="nav-item dropdown" v-if="isAdmin || isSuperadmin">
                             <a class="nav-link dropdown-toggle" href="#navbar-base" data-bs-toggle="dropdown"
                                 data-bs-auto-close="outside" role="button" aria-expanded="false">
                                 <span class="nav-link-icon d-md-none d-lg-inline-block">
@@ -168,20 +190,20 @@ const page = usePage();
                                 <div class="dropdown-menu-columns">
                                     <div class="dropdown-menu-column">
                                         <Link class="dropdown-item" :href="route('academic-periods.index')">
-                                            Periode Akademik
+                                        Periode Akademik
                                         </Link>
                                         <Link class="dropdown-item" :href="route('faculties.index')">
-                                            Fakultas
+                                        Fakultas
                                         </Link>
                                         <Link class="dropdown-item" :href="route('program-studies.index')">
-                                            Program Studi
+                                        Program Studi
                                         </Link>
                                     </div>
                                 </div>
                             </div>
                         </li>
 
-                        <li class="nav-item">
+                        <li class="nav-item" v-if="isSuperadmin">
                             <Link class="nav-link" :href="route('users.index')">
                             <span class="nav-link-icon d-md-none d-lg-inline-block">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"

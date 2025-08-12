@@ -12,5 +12,6 @@ class StudentDetail extends Model
         'domicile_address',
         'study_program',
         'phone_number',
+        'program_study_code',
     ];
 }

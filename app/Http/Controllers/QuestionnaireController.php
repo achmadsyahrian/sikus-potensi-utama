@@ -6,6 +6,7 @@ use App\Models\AcademicPeriod;
 use App\Models\Faculty;
 use App\Models\ProgramStudy;
 use App\Models\Question;
+use App\Models\QuestionCategory;
 use App\Models\Questionnaire;
 use App\Models\Role;
 use Illuminate\Http\Request;
@@ -103,6 +104,7 @@ class QuestionnaireController extends Controller
         $roles = Role::orderBy('name', 'asc')->get();
         $faculties = Faculty::orderBy('name', 'asc')->get();
         $programStudies = ProgramStudy::orderBy('name', 'asc')->get();
+        $questionCategories = $questionnaire->categories()->get();
 
         return Inertia::render('Questionnaires/Show', [
             'questionnaire' => $questionnaire,
@@ -110,6 +112,7 @@ class QuestionnaireController extends Controller
             'roles' => $roles,
             'faculties' => $faculties,
             'programStudies' => $programStudies,
+            'questionCategories' => $questionCategories
         ]);
     }
 

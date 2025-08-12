@@ -51,7 +51,7 @@ const submit = () => {
                     <BaseInput label="Email" type="email" placeholder="Email Anda" v-model="form.email" :error="form.errors.email" />
                     <BaseInput label="Password" type="password" placeholder="Password Anda" v-model="form.password" :error="form.errors.password" />
 
-                    <div class="mb-2">
+                    <div class="my-2">
                         <label class="form-check">
                             <input type="checkbox" class="form-check-input" v-model="form.remember" />
                             <span class="form-check-label">Ingat saya</span>

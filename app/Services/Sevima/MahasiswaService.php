@@ -27,6 +27,8 @@ class MahasiswaService extends BaseService
         $sevimaData = $sevimaData['attributes'] ?? $sevimaData;
         $nim = data_get($sevimaData, 'nim');
         $studyProgram = data_get($sevimaData, 'program_studi') ?? null;
+        $studyProgramCode = data_get($sevimaData, 'id_program_studi') ?? null;
+        $studyProgramCode = data_get($sevimaData, 'id_program_studi') ?? null;
         $domicileAddress = data_get($sevimaData, 'alamat_domisili') ?? null;
         $phoneNumber = data_get($sevimaData, 'hp') ?? null;
         
@@ -40,6 +42,7 @@ class MahasiswaService extends BaseService
                 'study_program' => $studyProgram,
                 'domicile_address' => Str::title($domicileAddress),
                 'phone_number' => $phoneNumber,
+                'program_study_code' => $studyProgramCode,
             ]
         );
 

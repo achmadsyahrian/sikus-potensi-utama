@@ -5,7 +5,6 @@ import BaseButton from '@/Components/BaseButton.vue';
 import BaseInput from '@/Components/BaseInput.vue';
 import DataTable from '@/Components/DataTable.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
-import FlashAlert from '@/Components/FlashAlert.vue';
 
 const props = defineProps({
     questionnaire: Object,
@@ -118,109 +117,97 @@ const deleteOption = () => {
 
 // Computed property untuk cek apakah form tambah tidak valid
 const isAddFormInvalid = computed(() => {
-  return addForm.processing || !addForm.option_text || !addForm.option_value || !addForm.order || !!addingOrderError.value;
+    return addForm.processing || !addForm.option_text || !addForm.option_value || !addForm.order || !!addingOrderError.value;
 });
 
 // Computed property untuk cek apakah form edit tidak valid
 const isEditFormInvalid = computed(() => {
-  return editForm.processing || !editForm.option_text || !editForm.option_value || !editForm.order;
+    return editForm.processing || !editForm.option_text || !editForm.option_value || !editForm.order;
 });
 
 </script>
 
 <template>
-    <div class="card-body">
-        <FlashAlert />
-        <QuestionnaireInfoCard :questionnaire="questionnaire" />
-        <div class="d-flex align-items-center justify-content-between pt-2 pb-4">
-            <div>
-                <h3 class="fw-bold mb-1">Manajemen Opsi</h3>
-                <h5 class="op-7 mb-2 text-muted">Kelola opsi jawaban yang dapat digunakan kembali untuk pertanyaan kuesioner.</h5>
-            </div>
-            <div class="ms-md-auto py-2 py-md-0">
-                <BaseButton type="button" label="Tambah Opsi" variant="primary" @click="startAdd"
-                    v-if="!isAdding">
-                    <i class="fa-solid fa-plus me-2"></i> Tambah Opsi
-                </BaseButton>
-            </div>
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title">Daftar Opsi</h3>
+            <BaseButton type="button" variant="primary" @click="startAdd" v-if="!isAdding">
+                <i class="fa-solid fa-plus me-2"></i> Tambah Opsi
+            </BaseButton>
         </div>
-        <div class="card">
-            <DataTable :data="{ data: sortedOptions }" :columns="columns">
-                <template #before-tbody>
-                    <tr v-if="isAdding">
-                        <td class="w-10">
-                            <BaseInput type="number" v-model="addForm.order" :error="addForm.errors.order || addingOrderError"
-                                :disabled="addForm.processing" />
-                        </td>
-                        <td>
-                            <BaseInput type="text" v-model="addForm.option_text" :error="addForm.errors.option_text"
-                                :disabled="addForm.processing" placeholder="Masukkan teks opsi jawaban" />
-                        </td>
-                        <td class="w-10">
-                            <BaseInput type="number" v-model="addForm.option_value" :error="addForm.errors.option_value"
-                                :disabled="addForm.processing" />
-                        </td>
-                        <td>
-                            <div class="d-flex gap-2">
-                                <BaseButton type="button" @click="createOption"
-                                    :disabled="isAddFormInvalid"
-                                    label="Simpan" variant="primary" />
-                                <BaseButton type="button" @click="cancelAdd" label="Batal" variant="secondary" outline />
-                            </div>
-                        </td>
-                    </tr>
-                </template>
-                <template #cell(order)="{ item }">
-                    <template v-if="isEditing === item.id">
-                        <div class="w-20">
-                            <BaseInput type="number" v-model="editForm.order" :error="editForm.errors.order"
-                                :disabled="editForm.processing" :class="{'border border-warning': editingOrderWarning}" />
-                            <span v-if="editingOrderWarning" class="fs-5 text-warning p-0">
-                                {{ editingOrderWarning }}
-                            </span>
+        <DataTable :data="{ data: sortedOptions }" :columns="columns">
+            <template #before-tbody>
+                <tr v-if="isAdding">
+                    <td class="w-10">
+                        <BaseInput type="number" v-model="addForm.order"
+                            :error="addForm.errors.order || addingOrderError" :disabled="addForm.processing" />
+                    </td>
+                    <td>
+                        <BaseInput type="text" v-model="addForm.option_text" :error="addForm.errors.option_text"
+                            :disabled="addForm.processing" placeholder="Masukkan teks opsi jawaban" />
+                    </td>
+                    <td class="w-10">
+                        <BaseInput type="number" v-model="addForm.option_value" :error="addForm.errors.option_value"
+                            :disabled="addForm.processing" />
+                    </td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <BaseButton type="button" @click="createOption" :disabled="isAddFormInvalid" label="Simpan"
+                                variant="primary" />
+                            <BaseButton type="button" @click="cancelAdd" label="Batal" variant="secondary" outline />
                         </div>
-                    </template>
-                    <template v-else>
-                        <div class="ms-3">{{ item.order }}</div>
-                    </template>
-                </template>
-                <template #cell(option_text)="{ item }">
-                    <template v-if="isEditing === item.id">
-                        <BaseInput type="text" v-model="editForm.option_text" :error="editForm.errors.option_text"
-                            :disabled="editForm.processing" />
-                    </template>
-                    <template v-else>
-                        {{ item.option_text }}
-                    </template>
-                </template>
-                <template #cell(option_value)="{ item }">
-                    <template v-if="isEditing === item.id">
-                        <BaseInput type="number" v-model="editForm.option_value" :error="editForm.errors.option_value"
-                            :disabled="editForm.processing" />
-                    </template>
-                    <template v-else>
-                        {{ item.option_value }}
-                    </template>
-                </template>
-                <template #cell(actions)="{ item }">
-                    <div v-if="isEditing !== item.id" class="d-flex gap-2">
-                        <BaseButton variant="info" class="btn-icon" outline @click.prevent="startEdit(item)">
-                            <i class="fa-solid fa-pencil-alt"></i>
-                        </BaseButton>
-                        <BaseButton variant="danger" class="btn-icon" outline data-bs-toggle="modal"
-                            data-bs-target="#confirmDeleteModal" @click.prevent="confirmDelete(item)">
-                            <i class="fa-solid fa-trash"></i>
-                        </BaseButton>
-                    </div>
-                    <div v-else class="d-flex gap-2">
-                        <BaseButton type="button" @click="updateOption(item.id)"
-                            :disabled="isEditFormInvalid" 
-                            label="Simpan" variant="primary" />
-                        <BaseButton type="button" @click="cancelEdit" label="Batal" variant="secondary" outline />
+                    </td>
+                </tr>
+            </template>
+            <template #cell(order)="{ item }">
+                <template v-if="isEditing === item.id">
+                    <div class="w-20">
+                        <BaseInput type="number" v-model="editForm.order" :error="editForm.errors.order"
+                            :disabled="editForm.processing" :class="{ 'border border-warning': editingOrderWarning }" />
+                        <span v-if="editingOrderWarning" class="fs-5 text-warning p-0">
+                            {{ editingOrderWarning }}
+                        </span>
                     </div>
                 </template>
-            </DataTable>
-        </div>
+                <template v-else>
+                    <div class="ms-3">{{ item.order }}</div>
+                </template>
+            </template>
+            <template #cell(option_text)="{ item }">
+                <template v-if="isEditing === item.id">
+                    <BaseInput type="text" v-model="editForm.option_text" :error="editForm.errors.option_text"
+                        :disabled="editForm.processing" />
+                </template>
+                <template v-else>
+                    {{ item.option_text }}
+                </template>
+            </template>
+            <template #cell(option_value)="{ item }">
+                <template v-if="isEditing === item.id">
+                    <BaseInput type="number" v-model="editForm.option_value" :error="editForm.errors.option_value"
+                        :disabled="editForm.processing" />
+                </template>
+                <template v-else>
+                    {{ item.option_value }}
+                </template>
+            </template>
+            <template #cell(actions)="{ item }">
+                <div v-if="isEditing !== item.id" class="d-flex gap-2">
+                    <BaseButton variant="info" class="btn-icon" outline @click.prevent="startEdit(item)">
+                        <i class="fa-solid fa-pencil-alt"></i>
+                    </BaseButton>
+                    <BaseButton variant="danger" class="btn-icon" outline data-bs-toggle="modal"
+                        data-bs-target="#confirmDeleteModal" @click.prevent="confirmDelete(item)">
+                        <i class="fa-solid fa-trash"></i>
+                    </BaseButton>
+                </div>
+                <div v-else class="d-flex gap-2">
+                    <BaseButton type="button" @click="updateOption(item.id)" :disabled="isEditFormInvalid"
+                        label="Simpan" variant="primary" />
+                    <BaseButton type="button" @click="cancelEdit" label="Batal" variant="secondary" outline />
+                </div>
+            </template>
+        </DataTable>
     </div>
     <ConfirmModal id="confirmDeleteModal" title="Hapus Opsi"
         :message="`Apakah Anda yakin ingin menghapus opsi '${optionToDelete?.option_text}'? Aksi ini tidak dapat dibatalkan.`"

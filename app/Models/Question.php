@@ -17,7 +17,20 @@ class Question extends Model
         'question_text',
         'question_type',
         'is_required',
+        'order',
     ];
+
+    protected $with = ['category'];
+
+    protected $appends = ['formatted_question_type'];
+
+    public function getFormattedQuestionTypeAttribute(): string
+    {
+        return [
+            'multiple_choice' => 'Pilihan Ganda',
+            'text' => 'Teks Bebas',
+        ][$this->question_type] ?? 'Tidak Diketahui';
+    }
 
     public function questionnaire(): BelongsTo
     {
@@ -27,11 +40,6 @@ class Question extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(QuestionCategory::class, 'category_id');
-    }
-
-    public function options(): HasMany
-    {
-        return $this->hasMany(QuestionOption::class);
     }
 
     public function answers(): HasMany

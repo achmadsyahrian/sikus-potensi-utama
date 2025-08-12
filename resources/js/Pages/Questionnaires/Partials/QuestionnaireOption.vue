@@ -19,7 +19,7 @@ const props = defineProps({
         <div class="d-flex align-items-center justify-content-between pt-2 pb-4">
             <div>
                 <h3 class="fw-bold mb-1">Manajemen Opsi</h3>
-                <h6 class="op-7 mb-2">Kelola opsi jawaban yang dapat digunakan kembali untuk pertanyaan kuesioner.</h6>
+                <h5 class="op-7 mb-2 text-muted">Kelola opsi jawaban yang dapat digunakan kembali untuk pertanyaan kuesioner.</h5>
             </div>
         </div>
         <QuestionnaireOptionTable

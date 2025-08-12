@@ -297,6 +297,8 @@ return [
         'start_date'               => 'tanggal mulai',
         'order'                    => 'urutan',
         'end_date'                 => 'tanggal selesai',
-        'academic_period_id'       => 'periode akademik'
+        'academic_period_id'       => 'periode akademik',
+        'question_text'            => 'teks pertanyaan',
+        'question_type'            => 'tipe pertanyaan',
     ],
 ];

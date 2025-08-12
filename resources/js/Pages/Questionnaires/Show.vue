@@ -5,8 +5,9 @@ import { ref } from 'vue';
 import QuestionnaireForm from './Partials/QuestionnaireForm.vue';
 import QuestionnaireMenu from './Partials/QuestionnaireMenu.vue';
 import QuestionnaireCategory from './Partials/QuestionnaireCategory.vue';
-import QuestionnaireOption from './Partials/QuestionnaireOption.vue'; // Import komponen baru
-import BaseButton from '@/Components/BaseButton.vue';
+import QuestionnaireOption from './Partials/QuestionnaireOption.vue';
+import QuestionnaireQuestion from './Partials/QuestionnaireQuestion.vue';
+import BaseAlert from '@/Components/BaseAlert.vue';
 
 const props = defineProps({
     questionnaire: Object,
@@ -14,6 +15,7 @@ const props = defineProps({
     academicPeriods: Array,
     faculties: Array,
     programStudies: Array,
+    questionCategories: Array,
 });
 
 const form = useForm({
@@ -43,6 +45,7 @@ const update = () => {
 </script>
 
 <template>
+
     <Head :title="`Detail Kuesioner: ${questionnaire.name}`" />
 
     <AuthenticatedLayout>
@@ -58,6 +61,10 @@ const update = () => {
                 </div>
             </div>
         </template>
+
+        <BaseAlert type="warning" title="Penting: Periksa Kembali!"
+            message="Setelah kuesioner diaktifkan dan mulai diisi, semua data (pertanyaan, opsi, dan kategori) tidak dapat diubah lagi. Pastikan semua data sudah benar sebelum mengaktifkan kuesioner ini."
+            class="mb-4" />
 
         <div class="card">
             <div class="row g-0">
@@ -77,14 +84,11 @@ const update = () => {
                             :questionCategories="questionnaire.categories" />
                     </div>
                     <div v-else-if="activeMenu === 'options'">
-                        <QuestionnaireOption :questionnaire="questionnaire"
-                            :questionOptions="questionnaire.options" />
+                        <QuestionnaireOption :questionnaire="questionnaire" :questionOptions="questionnaire.options" />
                     </div>
                     <div v-else-if="activeMenu === 'questions'">
-                        <div class="card-body">
-                            <h5 class="card-title text-primary">Pertanyaan Kuesioner</h5>
-                            <p>Halaman ini akan menampilkan daftar pertanyaan kuesioner.</p>
-                        </div>
+                        <QuestionnaireQuestion :questionnaire="questionnaire"
+                            :questionCategories="questionCategories" />
                     </div>
                     <div v-else-if="activeMenu === 'results'">
                         <div class="card-body">

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Role;
 use App\Models\StudentDetail;
 use App\Services\Sevima\AuthService as SevimaAuthService;
+use App\Services\Sevima\LecturerService;
 use App\Services\Sevima\MahasiswaService;
 use Exception;
 use Illuminate\Validation\ValidationException;
@@ -26,20 +27,30 @@ class AuthController extends Controller
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
+            'remember' => ['nullable', 'boolean']
         ]);
 
-        if (Auth::attempt($credentials, $request->remember)) {
+        if (Auth::attempt($request->only('email', 'password'), $request->remember)) {
             $request->session()->regenerate();
-            return redirect()->route('dashboard');
+            $user = Auth::user();
+            if ($user->roles->count() > 1) {
+                return redirect()->route('role-selection.index');
+            }
+            return redirect()->intended(route('dashboard', absolute: false));
         }
 
         try {
             $sevimaData = SevimaAuthService::attemptLogin($credentials['email'], $credentials['password']);
-
             if ($sevimaData) {
                 $sevimaUserData = $sevimaData['attributes'];
                 $sevimaUserId = $sevimaUserData['user_id'];
                 $sevimaRoles = $sevimaUserData['role'];
+
+                if (empty($sevimaUserData['email']) || empty($sevimaUserData['nama'])) {
+                    throw ValidationException::withMessages([
+                        'email' => 'Data dari sistem eksternal tidak lengkap. Silakan coba lagi atau hubungi administrator.'
+                    ]);
+                }
 
                 $user = User::firstOrCreate(
                     ['sevima_user_id' => $sevimaUserId],
@@ -51,6 +62,20 @@ class AuthController extends Controller
                     ]
                 );
 
+                $isDosen = collect($sevimaRoles)->contains('id_role', 'dosen');
+                if ($isDosen) {
+                    $dosenRole = Role::where('slug', 'dosen')->first();
+                    if ($dosenRole) {
+                        $user->roles()->syncWithoutDetaching([$dosenRole->id]);
+                    }
+                    $dosenLoginData = collect($sevimaRoles)->where('id_role', 'dosen')->first();
+                    $id = $dosenLoginData['id_pegawai'];
+
+                    $sevimaData = LecturerService::fetchLecturerById($id);
+                    (new LecturerService())->syncLecturer($user, $sevimaData);
+                }
+
+                // Logika lama untuk Mahasiswa
                 $isMahasiswa = collect($sevimaRoles)->contains('id_role', 'mhs');
                 if ($isMahasiswa) {
                     $mahasiswaRole = Role::where('slug', 'mahasiswa')->first();
@@ -66,20 +91,21 @@ class AuthController extends Controller
 
                 Auth::login($user, $request->remember);
                 $request->session()->regenerate();
-                return redirect()->route('dashboard');
+                if ($user->roles->count() > 1) {
+                    return redirect()->route('role-selection.index');
+                }
+                return redirect()->intended(route('dashboard', absolute: false));
             }
         } catch (Exception $e) {
             throw ValidationException::withMessages([
-                'email' => 'Akun anda tidak dapat ditemukan di sistem kami.',
+                'email' => 'Akun anda tidak dapat ditemukan di sistem kami.'
             ]);
         }
 
         throw ValidationException::withMessages([
-            'email' => 'Kredensial yang diberikan tidak cocok dengan data kami.',
+            'email' => 'Kredensial yang diberikan tidak cocok dengan data kami.'
         ]);
     }
-
-
 
 
     public function destroy(Request $request)

@@ -21,7 +21,7 @@ class Questionnaire extends Model
         'end_date',
     ];
 
-    protected $with = ['academicPeriod', 'targets', 'categories', 'options'];
+    protected $with = ['academicPeriod', 'targets', 'categories', 'options', 'questions'];
 
     protected $appends = [
         'formatted_start_date',

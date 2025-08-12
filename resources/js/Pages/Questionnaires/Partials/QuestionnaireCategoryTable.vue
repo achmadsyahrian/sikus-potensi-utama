@@ -120,7 +120,7 @@ const deleteCategory = () => {
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title">Daftar Kategori</h3>
-            <BaseButton type="button" label="Tambah Kategori" variant="primary" @click="startAdd" v-if="!isAdding">
+            <BaseButton type="button" variant="primary" @click="startAdd" v-if="!isAdding">
                 <i class="fa-solid fa-plus me-2"></i> Tambah Kategori
             </BaseButton>
         </div>

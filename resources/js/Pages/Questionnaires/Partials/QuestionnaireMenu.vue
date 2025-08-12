@@ -15,7 +15,7 @@ const emit = defineEmits(['update:modelValue']);
             <a class="list-group-item list-group-item-action d-flex align-items-center"
                 :class="{ 'active': modelValue === 'basic' }"
                 @click.prevent="emit('update:modelValue', 'basic')">
-                <span class="icon me-2">
+                <span class="icon me-2 mb-2">
                     <i class="fa-solid fa-file-alt"></i>
                 </span>
                 Informasi Dasar
@@ -23,7 +23,7 @@ const emit = defineEmits(['update:modelValue']);
             <a class="list-group-item list-group-item-action d-flex align-items-center"
                 :class="{ 'active': modelValue === 'categories' }"
                 @click.prevent="emit('update:modelValue', 'categories')">
-                <span class="icon me-2">
+                <span class="icon me-2 mb-2">
                     <i class="fa-solid fa-list-alt"></i>
                 </span>
                 Manajemen Kategori
@@ -31,7 +31,7 @@ const emit = defineEmits(['update:modelValue']);
             <a class="list-group-item list-group-item-action d-flex align-items-center"
                 :class="{ 'active': modelValue === 'options' }"
                 @click.prevent="emit('update:modelValue', 'options')">
-                <span class="icon me-2">
+                <span class="icon me-2 mb-2">
                     <i class="fa-solid fa-list-check"></i>
                 </span>
                 Manajemen Opsi
@@ -39,7 +39,7 @@ const emit = defineEmits(['update:modelValue']);
             <a class="list-group-item list-group-item-action d-flex align-items-center"
                 :class="{ 'active': modelValue === 'questions' }"
                 @click.prevent="emit('update:modelValue', 'questions')">
-                <span class="icon me-2">
+                <span class="icon me-2 mb-2">
                     <i class="fa-solid fa-question-circle"></i>
                 </span>
                 Manajemen Pertanyaan
@@ -47,7 +47,7 @@ const emit = defineEmits(['update:modelValue']);
             <a class="list-group-item list-group-item-action d-flex align-items-center"
                 :class="{ 'active': modelValue === 'results' }"
                 @click.prevent="emit('update:modelValue', 'results')">
-                <span class="icon me-2">
+                <span class="icon me-2 mb-2">
                     <i class="fa-solid fa-chart-bar"></i>
                 </span>
                 Hasil Kuesioner

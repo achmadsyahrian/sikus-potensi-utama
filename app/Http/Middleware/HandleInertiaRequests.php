@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tightenco\Ziggy\Ziggy;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 use Tighten\Ziggy\Ziggy as ZiggyZiggy;
 
 class HandleInertiaRequests extends Middleware
@@ -27,6 +28,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'auth' => [
                 'user' => Auth::check() ? Auth::user()->load('roles') : null,
+                'activeRoleId' => Session::get('active_role_id')
             ],
             'flash' => [
                 'success' => fn() => $request->session()->get('success'),
