@@ -58,7 +58,7 @@ const groupedQuestionnaires = computed(() => {
                                                 <span :class="q.status === 'Diisi' ? 'badge bg-success-lt me-3' : 'badge bg-warning-lt me-3'">
                                                     {{ q.status }}
                                                 </span>
-                                                <Link v-if="q.status === 'Belum Diisi'" href="#">
+                                                <Link v-if="q.status === 'Belum Diisi'" :href="route('answers.index', { questionnaire: q.id })">
                                                     <BaseButton variant="primary" size="sm">Isi Kuesioner</BaseButton>
                                                 </Link>
                                                 <BaseButton v-else variant="secondary" size="sm" disabled>Sudah Diisi</BaseButton>

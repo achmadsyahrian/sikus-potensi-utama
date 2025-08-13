@@ -16,6 +16,7 @@ class QuestionOptionController extends Controller
             'option_value' => [
                 'required',
                 'integer',
+                'min:1',
                 Rule::unique('question_options')->where(function ($query) use ($request) {
                     return $query->where('questionnaire_id', $request->questionnaire_id);
                 }),
@@ -23,6 +24,7 @@ class QuestionOptionController extends Controller
             'order' => [
                 'required',
                 'integer',
+                'min:1',
                 Rule::unique('question_options')->where(function ($query) use ($request) {
                     return $query->where('questionnaire_id', $request->questionnaire_id);
                 }),
@@ -46,11 +48,12 @@ class QuestionOptionController extends Controller
             'option_value' => [
                 'required',
                 'integer',
+                'min:1',
                 Rule::unique('question_options')->where(function ($query) use ($option) {
                     return $query->where('questionnaire_id', $option->questionnaire_id);
                 })->ignore($option->id),
             ],
-            'order' => ['required', 'integer'],
+            'order' => ['required', 'integer', 'min:1'],
         ]);
 
         // Ambil opsi yang urutannya sama

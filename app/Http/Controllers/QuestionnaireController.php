@@ -98,8 +98,17 @@ class QuestionnaireController extends Controller
 
         return redirect()->route('questionnaires.index')->with('success', 'Kuesioner berhasil disimpan!');
     }
+
     public function show(Questionnaire $questionnaire)
     {
+        $questionnaire->load([
+            'categories.questions.category',
+            'answers.user',
+            'answers.user.studentDetail',
+            'answers.user.lecturerDetail',
+            'answers.user.roles',
+            'answers.role',
+        ]);
         $academicPeriods = AcademicPeriod::orderBy('name', 'desc')->get();
         $roles = Role::orderBy('name', 'asc')->get();
         $faculties = Faculty::orderBy('name', 'asc')->get();

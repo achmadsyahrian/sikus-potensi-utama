@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('questionnaire_id')->constrained()->cascadeOnDelete();
             $table->foreignId('question_id')->constrained()->cascadeOnDelete();
-            $table->text('answer_value');
+            $table->text('answer_value')->nullable();
             $table->timestamps();
         });
     }

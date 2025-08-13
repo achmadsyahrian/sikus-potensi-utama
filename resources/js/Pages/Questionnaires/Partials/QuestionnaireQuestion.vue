@@ -101,6 +101,7 @@ const saveQuestion = () => {
                 if (modal) {
                     modal.hide();
                 }
+                form.reset();
             },
         });
     } else {
@@ -112,6 +113,7 @@ const saveQuestion = () => {
                 if (modal) {
                     modal.hide();
                 }
+                form.reset();
             },
         });
     }

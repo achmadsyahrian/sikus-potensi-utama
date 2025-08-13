@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AcademicPeriodController;
+use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FacultyController;
 use App\Http\Controllers\ProfileController;
@@ -71,11 +72,16 @@ Route::middleware('auth')->group(function () {
         Route::post('/program-studies/sync', [ProgramStudyController::class, 'sync'])->name('program-studies.sync');
     });
 
-    // Rute untuk superadmin saja
     Route::middleware('role:superadmin')->group(function () {
         // =========== Pengguna ===========
         Route::resource('/users', UserController::class)->names('users');
         Route::post('/reset-password/{user}', [UserController::class, 'resetPassword'])->name('users.reset-password');
+    });
+
+    Route::middleware('role:mahasiswa,dosen,mitra,pegawai')->group(function () {
+        // =========== Jawaban Kuesioner ===========
+        Route::get('/questionnaires/{questionnaire}/answers', [AnswerController::class, 'index'])->name('answers.index');
+        Route::post('/questionnaires/{questionnaire}/answers', [AnswerController::class, 'store'])->name('answers.store');
     });
 });
 

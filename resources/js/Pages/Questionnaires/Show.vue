@@ -7,6 +7,9 @@ import QuestionnaireMenu from './Partials/QuestionnaireMenu.vue';
 import QuestionnaireCategory from './Partials/QuestionnaireCategory.vue';
 import QuestionnaireOption from './Partials/QuestionnaireOption.vue';
 import QuestionnaireQuestion from './Partials/QuestionnaireQuestion.vue';
+import QuestionnaireResults from './Partials/QuestionnaireResults.vue';
+import QuestionnaireRespondents from './Partials/QuestionnaireRespondents.vue';
+import RespondentAnswers from './Partials/RespondentAnswers.vue'; // <-- Tambahkan
 import BaseAlert from '@/Components/BaseAlert.vue';
 
 const props = defineProps({
@@ -33,6 +36,7 @@ const form = useForm({
 });
 
 const activeMenu = ref('basic');
+const selectedUserId = ref(null); // <-- Tambahkan state baru
 const isEditing = ref(false);
 
 const update = () => {
@@ -41,6 +45,15 @@ const update = () => {
             isEditing.value = false;
         }
     });
+};
+
+const showRespondentAnswers = (userId) => {
+    selectedUserId.value = userId;
+    activeMenu.value = 'respondent-answers';
+};
+
+const backToRespondents = () => {
+    activeMenu.value = 'respondents';
 };
 </script>
 
@@ -91,10 +104,13 @@ const update = () => {
                             :questionCategories="questionCategories" />
                     </div>
                     <div v-else-if="activeMenu === 'results'">
-                        <div class="card-body">
-                            <h5 class="card-title text-primary">Hasil Kuesioner</h5>
-                            <p>Halaman ini akan menampilkan hasil dan statistik dari kuesioner.</p>
-                        </div>
+                        <QuestionnaireResults :questionnaire="questionnaire" />
+                    </div>
+                    <div v-else-if="activeMenu === 'respondents'">
+                        <QuestionnaireRespondents :questionnaire="questionnaire" @show-answers="showRespondentAnswers" />
+                    </div>
+                    <div v-else-if="activeMenu === 'respondent-answers'">
+                        <RespondentAnswers :questionnaire="questionnaire" :userId="selectedUserId" @back="backToRespondents" />
                     </div>
                 </div>
             </div>

@@ -21,12 +21,17 @@ class Questionnaire extends Model
         'end_date',
     ];
 
-    protected $with = ['academicPeriod', 'targets', 'categories', 'options', 'questions'];
+    protected $with = ['academicPeriod', 'targets', 'categories', 'options', 'questions', 'answers'];
 
     protected $appends = [
         'formatted_start_date',
         'formatted_end_date'
     ];
+
+    public function answers()
+    {
+        return $this->hasMany(Answer::class);
+    }
 
     public function academicPeriod(): BelongsTo
     {

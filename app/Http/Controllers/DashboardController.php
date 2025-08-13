@@ -129,6 +129,7 @@ class DashboardController extends Controller
             $hasAnswered = DB::table('answers')
                 ->where('user_id', $userId)
                 ->where('questionnaire_id', $questionnaire->id)
+                ->where('role_id', Session::get('active_role_id'))
                 ->exists();
 
             $questionnaire->status = $hasAnswered ? 'Diisi' : 'Belum Diisi';
