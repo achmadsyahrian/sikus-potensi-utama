@@ -2,20 +2,29 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreQuestionnaireRequest;
+use App\Http\Requests\UpdateQuestionnaireRequest;
 use App\Models\AcademicPeriod;
 use App\Models\Faculty;
 use App\Models\ProgramStudy;
-use App\Models\Question;
-use App\Models\QuestionCategory;
 use App\Models\Questionnaire;
 use App\Models\Role;
+use App\Models\User;
+use App\Services\QuestionnaireService; // Impor service
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Inertia\Inertia;
 
 class QuestionnaireController extends Controller
 {
+    protected $questionnaireService;
+
+    public function __construct(QuestionnaireService $questionnaireService)
+    {
+        $this->questionnaireService = $questionnaireService;
+    }
+
     public function index(Request $request)
     {
         $query = Questionnaire::query()->with('academicPeriod');
@@ -35,7 +44,9 @@ class QuestionnaireController extends Controller
     public function create()
     {
         $academicPeriods = AcademicPeriod::orderBy('name', 'desc')->get();
-        $roles = Role::orderBy('name', 'asc')->get();
+        $roles = Role::whereNotIn('name', ['superadmin', 'admin'])
+            ->orderBy('name', 'asc')
+            ->get();
         $faculties = Faculty::orderBy('name', 'asc')->get();
         $programStudies = ProgramStudy::orderBy('name', 'asc')->get();
 
@@ -47,57 +58,17 @@ class QuestionnaireController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreQuestionnaireRequest $request)
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'academic_period_id' => ['required', 'integer', 'exists:academic_periods,id'],
-            'is_active' => ['boolean'],
-            'start_date' => ['required', 'date'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-            'targets' => ['required', 'array'],
-            'targets.*.target_type' => ['required', 'string', Rule::in(['role', 'university', 'faculty', 'program_study'])],
-            'targets.*.target_value' => ['required', 'max:255'],
-        ]);
-        DB::transaction(function () use ($request) {
-            // 1. Buat kuesioner baru
-            $questionnaire = Questionnaire::create([
-                'name' => $request->name,
-                'description' => $request->description,
-                'academic_period_id' => $request->academic_period_id,
-                'is_active' => $request->is_active,
-                'start_date' => $request->start_date,
-                'end_date' => $request->end_date,
-            ]);
-
-            // Ambil semua target yang masuk dari frontend
-            $targets = collect($request->targets);
-
-            // 2. Filter target untuk menghapus prodi jika fakultasnya sudah ada
-            $finalTargets = $targets->reject(function ($target) use ($targets) {
-                if ($target['target_type'] === 'program_study') {
-                    $programStudy = ProgramStudy::find($target['target_value']);
-                    if ($programStudy) {
-                        $faculty = Faculty::where('faculty_code', $programStudy->faculty_code)->first();
-                        return $targets->contains(function ($t) use ($faculty) {
-                            return $t['target_type'] === 'faculty' && $t['target_value'] == $faculty->id;
-                        });
-                    }
-                }
-                return false;
-            });
-
-            // 3. Simpan target yang sudah difilter
-            foreach ($finalTargets as $target) {
-                $questionnaire->targets()->create([
-                    'target_type' => $target['target_type'],
-                    'target_value' => $target['target_value'],
-                ]);
-            }
-        });
+        try {
+            $this->questionnaireService->createQuestionnaire($request->validated());
+        } catch (\Exception $e) {
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('questionnaires.index')->with('success', 'Kuesioner berhasil disimpan!');
     }
+
 
     public function show(Questionnaire $questionnaire)
     {
@@ -109,72 +80,90 @@ class QuestionnaireController extends Controller
             'answers.user.roles',
             'answers.role',
         ]);
-        $academicPeriods = AcademicPeriod::orderBy('name', 'desc')->get();
-        $roles = Role::orderBy('name', 'asc')->get();
-        $faculties = Faculty::orderBy('name', 'asc')->get();
-        $programStudies = ProgramStudy::orderBy('name', 'asc')->get();
+
+        $baseData = $this->getBaseViewData();
+        $respondents = $this->getPaginatedRespondents($questionnaire);
         $questionCategories = $questionnaire->categories()->get();
 
-        return Inertia::render('Questionnaires/Show', [
+        return Inertia::render('Questionnaires/Show', array_merge($baseData, [
             'questionnaire' => $questionnaire,
-            'academicPeriods' => $academicPeriods,
-            'roles' => $roles,
-            'faculties' => $faculties,
-            'programStudies' => $programStudies,
-            'questionCategories' => $questionCategories
-        ]);
+            'questionCategories' => $questionCategories,
+            'respondents' => $respondents,
+        ]));
     }
 
-    public function update(Request $request, Questionnaire $questionnaire)
+
+    public function update(UpdateQuestionnaireRequest $request, Questionnaire $questionnaire)
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'academic_period_id' => ['required', 'integer', 'exists:academic_periods,id'],
-            'is_active' => ['boolean'],
-            'start_date' => ['required', 'date'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-            'targets' => ['required', 'array'],
-            'targets.*.target_type' => ['required', 'string', Rule::in(['role', 'university', 'faculty', 'program_study'])],
-            'targets.*.target_value' => ['required', 'max:255'],
-        ]);
-
-        DB::transaction(function () use ($request, $questionnaire) {
-            $questionnaire->update([
-                'name' => $request->name,
-                'description' => $request->description,
-                'academic_period_id' => $request->academic_period_id,
-                'is_active' => $request->is_active,
-                'start_date' => $request->start_date,
-                'end_date' => $request->end_date,
-            ]);
-
-            // Ambil semua target yang masuk dari frontend
-            $targets = collect($request->targets);
-
-            // Filter target untuk menghapus prodi jika fakultasnya sudah ada
-            $finalTargets = $targets->reject(function ($target) use ($targets) {
-                if ($target['target_type'] === 'program_study') {
-                    $programStudy = ProgramStudy::find($target['target_value']);
-                    if ($programStudy) {
-                        $faculty = Faculty::where('faculty_code', $programStudy->faculty_code)->first();
-                        return $targets->contains(function ($t) use ($faculty) {
-                            return $t['target_type'] === 'faculty' && $t['target_value'] == $faculty->id;
-                        });
-                    }
-                }
-                return false;
-            });
-
-            // Sinkronisasi target yang sudah difilter
-            $questionnaire->targets()->delete();
-            foreach ($finalTargets as $target) {
-                $questionnaire->targets()->create([
-                    'target_type' => $target['target_type'],
-                    'target_value' => $target['target_value'],
-                ]);
-            }
-        });
+        try {
+            $this->questionnaireService->updateQuestionnaire($questionnaire, $request->validated());
+        } catch (\Exception $e) {
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('questionnaires.show', $questionnaire->id)->with('success', 'Kuesioner berhasil diperbarui!');
+    }
+
+
+
+    public function destroy(Questionnaire $questionnaire)
+    {
+        if ($questionnaire->answers()->exists()) {
+            return redirect()->back()->with('error', 'Kuesioner tidak dapat dihapus karena sudah memiliki jawaban.');
+        }
+
+        $questionnaire->delete();
+
+        return redirect()->route('questionnaires.index')->with('success', 'Kuesioner berhasil dihapus!');
+    }
+
+    private function getBaseViewData()
+    {
+        $academicPeriods = AcademicPeriod::orderBy('name', 'desc')->get();
+        $roles = Role::whereNotIn('name', ['superadmin', 'admin'])
+            ->orderBy('name', 'asc')
+            ->get();
+        $faculties = Faculty::orderBy('name', 'asc')->get();
+        $programStudies = ProgramStudy::orderBy('name', 'asc')->get();
+
+        return compact('academicPeriods', 'roles', 'faculties', 'programStudies');
+    }
+
+    private function getPaginatedRespondents(Questionnaire $questionnaire)
+    {
+        $respondentUserIds = $questionnaire->answers()->select('user_id')
+            ->distinct()
+            ->pluck('user_id');
+
+        $perPage = 50;
+        $currentPage = Paginator::resolveCurrentPage();
+
+        $paginatedUsers = User::whereIn('id', $respondentUserIds)
+            ->with(['studentDetail', 'lecturerDetail', 'roles'])
+            ->paginate($perPage, ['*'], 'page', $currentPage);
+
+        $userAnswers = $questionnaire->answers()
+            ->whereIn('user_id', $paginatedUsers->pluck('id'))
+            ->with(['user', 'role'])
+            ->get();
+
+        $groupedRespondents = $paginatedUsers->map(function ($user) use ($userAnswers) {
+            $answers = $userAnswers->where('user_id', $user->id);
+            $roles = $answers->map->role->unique('id');
+
+            return (object)[
+                'user' => $user,
+                'roles' => $roles,
+                'answers' => $answers,
+            ];
+        });
+
+        return new LengthAwarePaginator(
+            $groupedRespondents,
+            $paginatedUsers->total(),
+            $paginatedUsers->perPage(),
+            $paginatedUsers->currentPage(),
+            ['path' => Paginator::resolveCurrentPath()]
+        );
     }
 }

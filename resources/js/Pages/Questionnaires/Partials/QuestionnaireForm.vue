@@ -7,6 +7,7 @@ import QuestionnaireBasicInfoForm from './QuestionnaireBasicInfoForm.vue';
 const props = defineProps({
     form: Object,
     roles: Array,
+    questionnaire: Object,
     academicPeriods: Array,
     faculties: Array,
     programStudies: Array,
@@ -51,7 +52,7 @@ const emit = defineEmits(['submit', 'editToggle']);
 
         <!-- Form Informasi Dasar -->
         <QuestionnaireBasicInfoForm :form="form" :academicPeriods="academicPeriods" :is-disabled="isDisabled"
-            :is-editing="isEditing" :is-create="isCreate" />
+            :is-editing="isEditing" :is-create="isCreate" :questionnaire="questionnaire" />
 
         <hr>
 

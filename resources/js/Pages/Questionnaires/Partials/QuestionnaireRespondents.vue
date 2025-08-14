@@ -8,34 +8,13 @@ import BaseTooltip from '@/Components/BaseTooltip.vue';
 
 const props = defineProps({
     questionnaire: Object,
+    respondents: Object,
 });
 
 // Definisikan event yang akan dikirim ke parent
 const emit = defineEmits(['show-answers']);
 
 // Computed property untuk mengelompokkan jawaban per user
-const respondents = computed(() => {
-    const groupedUsers = {};
-    props.questionnaire.answers.forEach(answer => {
-        if (!groupedUsers[answer.user_id]) {
-            // Inisialisasi dengan data user dan array kosong untuk peran dan jawaban
-            groupedUsers[answer.user_id] = {
-                user: answer.user,
-                roles: [],
-                answers: [],
-            };
-        }
-        
-        // Cek jika peran sudah ada di daftar unik, jika belum, tambahkan
-        const roleExists = groupedUsers[answer.user_id].roles.some(role => role.id === answer.role.id);
-        if (answer.role && !roleExists) {
-            groupedUsers[answer.user_id].roles.push(answer.role);
-        }
-
-        groupedUsers[answer.user_id].answers.push(answer);
-    });
-    return Object.values(groupedUsers);
-});
 
 // Emit event dengan userId saat tombol diklik
 const showRespondentAnswers = (userId) => {
@@ -60,27 +39,21 @@ const columns = [
     { key: 'index', label: 'No.', class: 'fw-bold text-dark w-1' },
     { key: 'user.name', label: 'Nama Responden', class: 'fw-bold text-dark' },
     { key: 'roles', label: 'Peran', class: 'fw-bold text-dark' },
-    { key: 'identitas', label: 'Identitas', class: 'fw-bold text-dark' },
+    { key: 'identitas', label: 'NIM/NIDN', class: 'fw-bold text-dark' },
 ];
 
 const tableData = computed(() => {
-    return {
-        data: respondents.value,
-        links: [],
-        last_page: 1,
-        current_page: 1,
-        from: 1,
-        to: respondents.value.length,
-        total: respondents.value.length,
-    };
+    return props.respondents;
 });
 
 // Tambahkan computed property baru untuk mendapatkan identitas
 const getIdentitas = (item) => {
     if (!item || !item.user) return '-';
 
-    const isMahasiswa = item.roles.some(role => role.name === 'Mahasiswa');
-    const isDosen = item.roles.some(role => role.name === 'Dosen');
+    const rolesArray = Array.isArray(item.roles) ? item.roles : Object.values(item.roles);
+    const isMahasiswa = rolesArray.some(role => role.name === 'Mahasiswa');
+
+    const isDosen = rolesArray.some(role => role.name === 'Dosen');
 
     if (isMahasiswa) {
         return item.user.student_detail?.nim || '-';
@@ -103,17 +76,18 @@ const getIdentitas = (item) => {
                     jawaban mereka.</h5>
             </div>
             <span class="badge bg-green-lt text-green">
-                {{ respondents.length }} Responden
+                {{ respondents.total }} Responden
             </span>
         </div>
 
         <div class="card">
             <DataTable :data="tableData" :columns="columns">
-                <template #cell(index)="{ index }">
-                    {{ index + 1 }}.
+                <template #cell(index)="{ item, index }">
+                    {{ tableData.from + index }}.
                 </template>
                 <template #cell(roles)="{ item }">
-                    <span v-for="role in item.roles" :key="role.id" class="badge me-1" :class="getRoleBadgeColor(role.name)">
+                    <span v-for="role in item.roles" :key="role.id" class="badge me-1"
+                        :class="getRoleBadgeColor(role.name)">
                         {{ role.name }}
                     </span>
                 </template>

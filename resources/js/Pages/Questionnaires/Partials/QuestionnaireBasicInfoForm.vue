@@ -3,9 +3,11 @@ import BaseInput from '@/Components/BaseInput.vue';
 import BaseSelect from '@/Components/BaseSelect.vue';
 import { computed } from 'vue';
 import { formatIndonesianDate } from '@/Utilities/dateFormatter.js';
+import BaseAlert from '@/Components/BaseAlert.vue'; // BARU: Impor BaseAlert
 
 const props = defineProps({
     form: Object,
+    questionnaire: Object, // BARU: Tambahkan prop questionnaire
     academicPeriods: Array,
     isDisabled: {
         type: Boolean,
@@ -51,6 +53,29 @@ const isActiveComputed = computed({
 const academicPeriodName = computed(() => {
     const period = props.academicPeriods.find(p => p.id === props.form.academic_period_id);
     return period ? period.name : 'Tidak ditemukan';
+});
+
+// BARU: Computed property untuk mengecek apakah kuesioner siap diaktifkan
+const canBeActivated = computed(() => {
+    if (!props.questionnaire) {
+        return false;
+    }
+    return props.questionnaire.questions.length > 0 && props.questionnaire.options.length > 0;
+});
+
+// BARU: Computed property untuk pesan peringatan
+const activationWarning = computed(() => {
+    if (!props.questionnaire) {
+        return 'Data kuesioner belum lengkap.';
+    }
+    if (props.questionnaire.questions.length === 0 && props.questionnaire.options.length === 0) {
+        return 'Kuesioner harus memiliki setidaknya satu pertanyaan dan satu opsi jawaban untuk dapat diaktifkan!';
+    } else if (props.questionnaire.questions.length === 0) {
+        return 'Kuesioner harus memiliki setidaknya satu pertanyaan untuk dapat diaktifkan!';
+    } else if (props.questionnaire.options.length === 0) {
+        return 'Kuesioner harus memiliki setidaknya satu opsi jawaban untuk dapat diaktifkan!';
+    }
+    return null;
 });
 </script>
 
@@ -105,14 +130,23 @@ const academicPeriodName = computed(() => {
                 </template>
             </div>
             <div class="col-12 mt-4">
-                <h5 class="card-title text-primary">Status Kuesioner</h5>
-                <template v-if="isEditing || isCreate">
+                <h5 class="card-title text-primary" v-if="!isCreate">Status Kuesioner</h5>
+                <template v-if="isEditing">
+                    <!-- <BaseAlert v-if="!canBeActivated && !form.is_active" type="warning" :message="activationWarning" class="mb-3" /> -->
+                    <p v-if="!canBeActivated && !form.is_active" class="text-danger fs-5">{{ activationWarning }}</p>
+
                     <div class="form-check form-switch d-inline-block">
-                        <input type="checkbox" v-model="isActiveComputed" class="form-check-input" id="is-active-check" :disabled="isDisabled">
+                        <input 
+                            type="checkbox" 
+                            v-model="isActiveComputed" 
+                            class="form-check-input" 
+                            id="is-active-check" 
+                            :disabled="isDisabled || (!canBeActivated && !isActiveComputed)"
+                        >
                         <label class="form-check-label" for="is-active-check">Aktif</label>
                     </div>
                 </template>
-                <template v-else>
+                <template v-else-if="!isEditing && !isCreate">
                     <span :class="{'badge bg-success': isActiveComputed, 'badge bg-secondary': !isActiveComputed}">
                         {{ isActiveComputed ? 'Aktif' : 'Tidak Aktif' }}
                     </span>

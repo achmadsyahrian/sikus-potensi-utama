@@ -11,6 +11,11 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    // Tambahkan prop baru untuk mengecek status jawaban
+    hasAnswers: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const emit = defineEmits(['edit', 'delete-confirm']);
@@ -54,14 +59,12 @@ const handleEdit = (question) => {
 };
 
 const handleDelete = (question) => {
-    // BARU: Emit seluruh objek pertanyaan untuk digunakan di modal konfirmasi
     emit('delete-confirm', question);
 };
 </script>
 
 <template>
     <div>
-        <!-- Looping untuk menampilkan setiap kategori sebagai tabel terpisah -->
         <div v-for="(group, categoryId) in groupedQuestions" :key="categoryId" class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h3 class="card-title">{{ group.name }}</h3>
@@ -91,11 +94,10 @@ const handleDelete = (question) => {
                                 </td>
                                 <td>
                                     <div class="btn-list flex-nowrap">
-                                        <BaseButton variant="primary" outline class="btn-icon" size="sm" @click="handleEdit(question)" data-bs-toggle="modal" data-bs-target="#question-form-modal">
+                                        <BaseButton variant="primary" outline class="btn-icon" size="sm" @click="handleEdit(question)" data-bs-toggle="modal" data-bs-target="#question-form-modal" :disabled="props.hasAnswers">
                                             <i class="fa-solid fa-pencil-alt"></i>
                                         </BaseButton>
-                                        <!-- Perbaikan: Tambahkan atribut data-bs untuk memicu modal konfirmasi -->
-                                        <BaseButton variant="danger" outline class="btn-icon" size="sm" @click="handleDelete(question)" data-bs-toggle="modal" data-bs-target="#confirm-delete-modal">
+                                        <BaseButton variant="danger" outline class="btn-icon" size="sm" @click="handleDelete(question)" data-bs-toggle="modal" data-bs-target="#confirm-delete-modal" :disabled="props.hasAnswers">
                                             <i class="fa-solid fa-trash"></i>
                                         </BaseButton>
                                     </div>

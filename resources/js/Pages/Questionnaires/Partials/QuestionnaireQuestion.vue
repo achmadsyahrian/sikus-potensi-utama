@@ -7,8 +7,9 @@ import QuestionnaireInfoCard from './QuestionnaireInfoCard.vue';
 import QuestionnaireQuestionTable from './QuestionnaireQuestionTable.vue';
 import BaseModal from '@/Components/BaseModal.vue';
 import QuestionnaireQuestionForm from './QuestionnaireQuestionForm.vue';
-// BARU: Impor ConfirmModal
 import ConfirmModal from '@/Components/ConfirmModal.vue';
+// BARU: Impor BaseAlert
+import BaseAlert from '@/Components/BaseAlert.vue';
 
 const props = defineProps({
     questionnaire: Object,
@@ -19,8 +20,12 @@ const props = defineProps({
 });
 
 const editingQuestion = ref(null);
-// BARU: Ref untuk menyimpan pertanyaan yang akan dihapus
 const questionToDelete = ref(null);
+
+// Computed property untuk mengecek apakah kuesioner sudah ada jawabannya
+const hasAnswers = computed(() => {
+    return props.questionnaire.total_answers > 0;
+});
 
 const form = useForm({
     id: null,
@@ -31,7 +36,6 @@ const form = useForm({
     order: null,
 });
 
-// Computed property untuk menampilkan pesan peringatan urutan
 const editingOrderWarning = computed(() => {
     if (!editingQuestion.value || form.order === null) {
         return null;
@@ -52,13 +56,11 @@ const editingOrderWarning = computed(() => {
     return null;
 });
 
-// Fungsi untuk membuka modal Tambah Pertanyaan
 const openAddModal = () => {
     editingQuestion.value = null;
     form.reset();
 };
 
-// Fungsi untuk membuka modal Edit Pertanyaan
 const openEditModal = (question) => {
     editingQuestion.value = question;
     form.id = question.id;
@@ -69,12 +71,10 @@ const openEditModal = (question) => {
     form.order = question.order;
 };
 
-// BARU: Fungsi untuk mengkonfirmasi penghapusan
 const confirmDelete = (question) => {
     questionToDelete.value = question;
 };
 
-// BARU: Fungsi yang dipanggil saat konfirmasi dari modal
 const performDelete = () => {
     if (questionToDelete.value) {
         form.delete(route('questions.destroy', [props.questionnaire.id, questionToDelete.value.id]), {
@@ -86,6 +86,7 @@ const performDelete = () => {
                     modal.hide();
                 }
                 questionToDelete.value = null;
+                form.reset();
             },
         });
     }
@@ -131,20 +132,23 @@ const saveQuestion = () => {
             </div>
         </div>
 
+        <BaseAlert v-if="hasAnswers" type="warning" title="Kuesioner Telah Dijawab"
+            message="Kuesioner ini sudah memiliki jawaban. Pertanyaan tidak dapat diubah, ditambah, atau dihapus untuk menjaga konsistensi data."
+            class="mb-4" />
+
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h3 class="card-title">Daftar Pertanyaan</h3>
                 <BaseButton variant="primary" data-bs-toggle="modal" data-bs-target="#question-form-modal"
-                    @click="openAddModal">
+                @click="openAddModal" v-if="!hasAnswers">
                     <i class="fa-solid fa-plus me-2"></i> Tambah Pertanyaan
                 </BaseButton>
             </div>
         </div>
         <div class="card-body p-0">
             <QuestionnaireQuestionTable :questions="questionnaire.questions" :questionCategories="questionCategories"
-                @edit="openEditModal" @delete-confirm="confirmDelete" />
+                @edit="openEditModal" @delete-confirm="confirmDelete" :has-answers="hasAnswers" />
         </div>
-
 
         <BaseModal id="question-form-modal" :title="editingQuestion ? 'Edit Pertanyaan' : 'Tambah Pertanyaan Baru'"
             size="lg">
@@ -156,14 +160,13 @@ const saveQuestion = () => {
             </template>
             <template #footer>
                 <BaseButton type="button" variant="secondary" data-bs-dismiss="modal">Batal</BaseButton>
-                <BaseButton type="submit" variant="primary" :disabled="form.processing"
+                <BaseButton type="submit" variant="primary" :disabled="form.processing || hasAnswers"
                     form="question-form">
                     {{ editingQuestion ? 'Simpan Perubahan' : 'Tambah Pertanyaan' }}
                 </BaseButton>
             </template>
         </BaseModal>
 
-        <!-- BARU: Modal untuk konfirmasi penghapusan -->
         <ConfirmModal id="confirm-delete-modal" title="Hapus Pertanyaan"
             :message="`Apakah Anda yakin ingin menghapus pertanyaan '${questionToDelete?.question_text}'? Aksi ini tidak dapat dibatalkan.`"
             confirm-text="Ya, Hapus" @confirm="performDelete" />

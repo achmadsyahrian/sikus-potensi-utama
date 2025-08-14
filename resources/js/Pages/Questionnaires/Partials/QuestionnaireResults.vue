@@ -14,6 +14,9 @@ const totalResponden = computed(() => {
 
 const totalQuestions = computed(() => props.questionnaire.questions.length);
 
+// Tambahkan computed property untuk total jawaban
+const totalAnswers = computed(() => props.questionnaire.answers.length);
+
 const answersByQuestion = computed(() => {
     const grouped = {};
     props.questionnaire.questions.forEach(q => {
@@ -44,7 +47,6 @@ const getOptionStatistics = (questionAnswers) => {
     }));
 };
 
-// State navigasi & accordion
 const selectedQuestionId = ref('all');
 const openAccordionId = ref(null);
 
@@ -52,7 +54,6 @@ const selectQuestion = (qid) => {
     selectedQuestionId.value = qid;
     openAccordionId.value = qid === 'all' ? null : qid;
 
-    // Biar animasi bootstrap tetap jalan
     nextTick(() => {
         document.querySelectorAll('.accordion-collapse').forEach(el => el.classList.remove('show'));
         if (qid !== 'all') {
@@ -76,13 +77,14 @@ const selectQuestion = (qid) => {
             </div>
         </div>
 
-        <!-- Summary Cards -->
         <div class="row g-3 mb-4">
             <div 
-                class="col-sm-4" 
+                class="col-sm-3" 
                 v-for="(info, idx) in [
                     { icon: 'fa-users', color: 'primary', value: totalResponden, label: 'Total Responden' },
                     { icon: 'fa-question-circle', color: 'success', value: totalQuestions, label: 'Total Pertanyaan' },
+                    // Tambahkan card baru untuk total jawaban
+                    { icon: 'fa-poll-h', color: 'info', value: totalAnswers, label: 'Total Jawaban' },
                     { icon: 'fa-check-circle', color: 'warning', value: questionnaire.options.length, label: 'Opsi Jawaban' }
                 ]" 
                 :key="idx"
@@ -97,7 +99,6 @@ const selectQuestion = (qid) => {
             </div>
         </div>
 
-        <!-- Navigation Q -->
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body d-flex flex-wrap gap-2">
                 <button 
@@ -119,7 +120,6 @@ const selectQuestion = (qid) => {
             </div>
         </div>
 
-        <!-- Question Results -->
         <div class="accordion" id="accordion-results">
             <div 
                 v-for="(group, qid) in answersByQuestion" 
@@ -147,7 +147,6 @@ const selectQuestion = (qid) => {
                     :class="{ show: selectedQuestionId !== 'all' && openAccordionId === group.question.id }"
                 >
                     <div class="accordion-body">
-                        <!-- Multiple Choice -->
                         <div v-if="group.question.question_type === 'multiple_choice'">
                             <div v-for="stats in getOptionStatistics(group.answers)" :key="stats.option_text" class="mb-3">
                                 <div class="d-flex justify-content-between">
@@ -160,7 +159,6 @@ const selectQuestion = (qid) => {
                             </div>
                         </div>
 
-                        <!-- Text Answers -->
                         <div v-else>
                             <ul class="list-group">
                                 <li v-for="(answer, idx) in group.answers" :key="idx" class="list-group-item">

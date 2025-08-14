@@ -5,6 +5,7 @@ import BaseButton from '@/Components/BaseButton.vue';
 import BaseInput from '@/Components/BaseInput.vue';
 import DataTable from '@/Components/DataTable.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
+import BaseAlert from '@/Components/BaseAlert.vue';
 
 const props = defineProps({
     questionnaire: Object,
@@ -21,6 +22,11 @@ const confirmDeleteModal = ref(null);
 
 const sortedCategories = computed(() => {
     return [...props.questionCategories].sort((a, b) => a.order - b.order);
+});
+
+// Computed property untuk mengecek apakah kuesioner sudah ada jawabannya
+const hasAnswers = computed(() => {
+    return props.questionnaire.total_answers > 0;
 });
 
 const addForm = useForm({
@@ -46,7 +52,6 @@ const addingOrderError = computed(() => {
     return addForm.errors.order;
 });
 
-// Computed property untuk mendapatkan pesan warning duplikasi saat mengedit
 const editingOrderWarning = computed(() => {
     const otherCategories = sortedCategories.value.filter(cat => cat.id !== isEditing.value);
     if (otherCategories.some(cat => cat.order === editForm.order)) {
@@ -114,19 +119,31 @@ const deleteCategory = () => {
         });
     }
 };
+
+const isAddFormInvalid = computed(() => {
+    return addForm.processing || !addForm.name || !!addingOrderError.value;
+});
+
+const isEditFormInvalid = computed(() => {
+    return editForm.processing || !editForm.name || editForm.errors.order;
+});
 </script>
 
 <template>
+    <BaseAlert v-if="hasAnswers" type="warning" title="Kuesioner Telah Dijawab"
+        message="Kuesioner ini sudah memiliki jawaban. Kategori pertanyaan tidak dapat diubah, ditambah, atau dihapus untuk menjaga konsistensi data."
+        class="mb-4" />
+
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title">Daftar Kategori</h3>
-            <BaseButton type="button" variant="primary" @click="startAdd" v-if="!isAdding">
+            <BaseButton type="button" variant="primary" @click="startAdd" v-if="!isAdding && !hasAnswers">
                 <i class="fa-solid fa-plus me-2"></i> Tambah Kategori
             </BaseButton>
         </div>
         <DataTable :data="{ data: sortedCategories }" :columns="columns">
             <template #before-tbody>
-                <tr v-if="isAdding">
+                <tr v-if="isAdding && !hasAnswers">
                     <td class="w-10">
                         <BaseInput type="number" v-model="addForm.order"
                             :error="addForm.errors.order || addingOrderError" :disabled="addForm.processing" />
@@ -138,7 +155,7 @@ const deleteCategory = () => {
                     <td>
                         <div class="d-flex gap-2">
                             <BaseButton type="button" @click="createCategory"
-                                :disabled="addForm.processing || !addForm.name || !!addingOrderError" label="Simpan"
+                                :disabled="isAddFormInvalid" label="Simpan"
                                 variant="primary" />
                             <BaseButton type="button" @click="cancelAdd" label="Batal" variant="secondary" outline />
                         </div>
@@ -172,17 +189,17 @@ const deleteCategory = () => {
             </template>
             <template #cell(actions)="{ item }">
                 <div v-if="isEditing !== item.id" class="d-flex gap-2">
-                    <BaseButton variant="info" class="btn-icon" outline @click.prevent="startEdit(item)">
+                    <BaseButton variant="info" class="btn-icon" outline @click.prevent="startEdit(item)" :disabled="hasAnswers">
                         <i class="fa-solid fa-pencil-alt"></i>
                     </BaseButton>
                     <BaseButton variant="danger" class="btn-icon" outline data-bs-toggle="modal"
-                        data-bs-target="#confirmDeleteModal" @click.prevent="confirmDelete(item)">
+                        data-bs-target="#confirmDeleteModal" @click.prevent="confirmDelete(item)" :disabled="hasAnswers">
                         <i class="fa-solid fa-trash"></i>
                     </BaseButton>
                 </div>
                 <div v-else class="d-flex gap-2">
                     <BaseButton type="button" @click="updateCategory(item.id)"
-                        :disabled="editForm.processing || editForm.errors.order" label="Simpan" variant="primary" />
+                        :disabled="isEditFormInvalid || hasAnswers" label="Simpan" variant="primary" />
                     <BaseButton type="button" @click="cancelEdit" label="Batal" variant="secondary" outline />
                 </div>
             </template>

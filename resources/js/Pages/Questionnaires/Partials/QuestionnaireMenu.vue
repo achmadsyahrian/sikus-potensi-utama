@@ -60,9 +60,9 @@ const emit = defineEmits(['update:modelValue']);
         </div>
         <div class="d-grid">
             <Link :href="route('questionnaires.index')">
-            <BaseButton type="button" variant="secondary" outline class="w-100">
-                <i class="fa-solid fa-arrow-left me-2"></i> Kembali
-            </BaseButton>
+                <BaseButton type="button" variant="secondary" outline class="w-100">
+                    <i class="fa-solid fa-arrow-left me-2"></i> Kembali
+                </BaseButton>
             </Link>
         </div>
     </div>

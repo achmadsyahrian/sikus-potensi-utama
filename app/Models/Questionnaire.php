@@ -25,7 +25,8 @@ class Questionnaire extends Model
 
     protected $appends = [
         'formatted_start_date',
-        'formatted_end_date'
+        'formatted_end_date',
+        'total_answers',
     ];
 
     public function answers()
@@ -48,6 +49,12 @@ class Questionnaire extends Model
         return $this->hasMany(QuestionCategory::class);
     }
 
+    public function questionsWithoutCategory(): HasMany
+    {
+        return $this->hasMany(Question::class)->whereNull('category_id');
+    }
+
+
     public function options(): HasMany
     {
         return $this->hasMany(QuestionOption::class);
@@ -68,5 +75,10 @@ class Questionnaire extends Model
     {
         Carbon::setLocale('id');
         return $this->end_date ? Carbon::parse($this->end_date)->translatedFormat('d F Y') : null;
+    }
+
+    public function getTotalAnswersAttribute(): int
+    {
+        return $this->answers()->count();
     }
 }

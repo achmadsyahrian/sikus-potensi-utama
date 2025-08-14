@@ -156,8 +156,8 @@ const isUser = computed(() => ['dosen', 'pegawai', 'mahasiswa', 'mitra'].include
                         </li>
 
                         <!-- Menu Daftar Kuesioner (Untuk Pengguna) -->
-                        <li class="nav-item" v-if="isUser || isSuperadmin">
-                            <Link class="nav-link" href="#">
+                        <li class="nav-item" v-if="isUser">
+                            <Link class="nav-link" :href="route('answers.index')">
                             <span class="nav-link-icon d-md-none d-lg-inline-block">
                                 <i class="fa-solid fa-list-check"></i>
                             </span>

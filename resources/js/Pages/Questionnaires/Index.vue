@@ -1,12 +1,14 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Link, Head, usePage } from '@inertiajs/vue3';
+import { Link, Head, usePage, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import DataTable from '@/Components/DataTable.vue';
 import QuestionnaireTableControls from './Partials/QuestionnaireTableControls.vue';
 import BaseAlert from '@/Components/BaseAlert.vue';
 import BaseButton from '@/Components/BaseButton.vue';
 import BaseTooltip from '@/Components/BaseTooltip.vue';
+// BARU: Impor modal konfirmasi
+import ConfirmModal from '@/Components/ConfirmModal.vue';
 
 const props = defineProps({
     questionnaires: Object,
@@ -15,6 +17,23 @@ const props = defineProps({
 
 const page = usePage();
 const appName = page.props.app_name;
+
+// BARU: Ref untuk kuesioner yang akan dihapus
+const questionnaireToDelete = ref(null);
+
+const showConfirmDeletionModal = (questionnaire) => {
+    questionnaireToDelete.value = questionnaire;
+};
+
+const deleteQuestionnaire = () => {
+    if (questionnaireToDelete.value) {
+        router.delete(route('questionnaires.destroy', questionnaireToDelete.value.id), {
+            onSuccess: () => {
+                questionnaireToDelete.value = null;
+            },
+        });
+    }
+};
 
 const columns = ref([
     { label: '#', key: 'row_number', class: 'w-1', dataClass: 'text-muted fs-5' },
@@ -47,7 +66,7 @@ const columns = ref([
 
         <div class="card">
             <DataTable :data="questionnaires" :columns="columns">
-                <template #cell(row_number)="{ index }">
+                <template #cell(row_number)="{ item, index }">
                     {{ questionnaires.from + index }}
                 </template>
 
@@ -65,7 +84,8 @@ const columns = ref([
                                 </BaseButton>
                             </Link>
                         </BaseTooltip>
-                        <BaseTooltip title="Hapus Kuesioner" data-bs-toggle="tooltip" data-bs-placement="top">
+                        
+                        <BaseTooltip v-if="item.total_answers === 0" title="Hapus Kuesioner" data-bs-toggle="tooltip" data-bs-placement="top">
                             <BaseButton 
                                 variant="danger" 
                                 class="btn-icon" 
@@ -77,9 +97,22 @@ const columns = ref([
                                 <i class="fa-solid fa-trash"></i>
                             </BaseButton>
                         </BaseTooltip>
+                        <BaseTooltip v-else title="Kuesioner tidak dapat dihapus" data-bs-toggle="tooltip" data-bs-placement="top">
+                            <BaseButton variant="danger" class="btn-icon" outline disabled>
+                                <i class="fa-solid fa-trash"></i>
+                            </BaseButton>
+                        </BaseTooltip>
                     </div>
                 </template>
             </DataTable>
         </div>
+
+        <ConfirmModal
+            id="confirmDeleteModal"
+            title="Hapus Kuesioner"
+            :message="`Apakah Anda yakin ingin menghapus kuesioner '${questionnaireToDelete?.name}'? Aksi ini tidak dapat dibatalkan.`"
+            confirm-text="Ya, Hapus"
+            @confirm="deleteQuestionnaire"
+        />
     </AuthenticatedLayout>
 </template>

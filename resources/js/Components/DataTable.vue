@@ -123,7 +123,7 @@ const visibleLinks = computed(() => {
         <ul class="pagination m-0 ms-auto">
             <li v-for="(link, index) in visibleLinks" :key="index" class="page-item"
                 :class="{ 'active': link.active, 'disabled': !link.url }">
-                <Link v-if="link.url" :href="link.url" class="page-link">
+                <Link v-if="link.url" :href="link.url" class="page-link" :data="{ tab: 'respondents' }">
                 <span v-if="link.label.includes('Previous')">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
                         stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"

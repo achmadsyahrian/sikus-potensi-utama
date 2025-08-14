@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, useForm, Link, usePage } from '@inertiajs/vue3';
+import { ref, watch, computed } from 'vue'; // Tambahkan 'computed'
 import QuestionnaireForm from './Partials/QuestionnaireForm.vue';
 import QuestionnaireMenu from './Partials/QuestionnaireMenu.vue';
 import QuestionnaireCategory from './Partials/QuestionnaireCategory.vue';
@@ -9,7 +9,7 @@ import QuestionnaireOption from './Partials/QuestionnaireOption.vue';
 import QuestionnaireQuestion from './Partials/QuestionnaireQuestion.vue';
 import QuestionnaireResults from './Partials/QuestionnaireResults.vue';
 import QuestionnaireRespondents from './Partials/QuestionnaireRespondents.vue';
-import RespondentAnswers from './Partials/RespondentAnswers.vue'; // <-- Tambahkan
+import RespondentAnswers from './Partials/RespondentAnswers.vue';
 import BaseAlert from '@/Components/BaseAlert.vue';
 
 const props = defineProps({
@@ -19,6 +19,23 @@ const props = defineProps({
     faculties: Array,
     programStudies: Array,
     questionCategories: Array,
+    respondents: Object,
+});
+
+const page = usePage();
+
+const activeMenu = ref('basic');
+const selectedUserId = ref(null);
+
+watch(() => page.url, (newUrl) => {
+    const url = new URL(newUrl, window.location.origin);
+    activeMenu.value = url.searchParams.get('tab') || 'basic';
+    selectedUserId.value = url.searchParams.get('userId') || null;
+}, { immediate: true });
+
+// Computed property untuk mengecek apakah kuesioner sudah ada jawabannya
+const hasAnswers = computed(() => {
+    return props.questionnaire.total_answers > 0;
 });
 
 const form = useForm({
@@ -35,8 +52,6 @@ const form = useForm({
     })),
 });
 
-const activeMenu = ref('basic');
-const selectedUserId = ref(null); // <-- Tambahkan state baru
 const isEditing = ref(false);
 
 const update = () => {
@@ -58,9 +73,7 @@ const backToRespondents = () => {
 </script>
 
 <template>
-
     <Head :title="`Detail Kuesioner: ${questionnaire.name}`" />
-
     <AuthenticatedLayout>
         <template #header>
             <div class="row g-2 align-items-center">
@@ -75,20 +88,19 @@ const backToRespondents = () => {
             </div>
         </template>
 
-        <BaseAlert type="warning" title="Penting: Periksa Kembali!"
+        <BaseAlert v-if="!hasAnswers" type="warning" title="Penting: Periksa Kembali!"
             message="Setelah kuesioner diaktifkan dan mulai diisi, semua data (pertanyaan, opsi, dan kategori) tidak dapat diubah lagi. Pastikan semua data sudah benar sebelum mengaktifkan kuesioner ini."
             class="mb-4" />
-
         <div class="card">
             <div class="row g-0">
                 <div class="col-3 d-none d-md-block border-end">
                     <div class="card-body">
-                        <QuestionnaireMenu v-model="activeMenu" />
+                        <QuestionnaireMenu :modelValue="activeMenu" @update:modelValue="activeMenu = $event" />
                     </div>
                 </div>
                 <div class="col d-flex flex-column">
                     <div v-if="activeMenu === 'basic'">
-                        <QuestionnaireForm :form="form" :roles="roles" :academicPeriods="academicPeriods"
+                        <QuestionnaireForm :form="form" :questionnaire="questionnaire" :roles="roles" :academicPeriods="academicPeriods"
                             :faculties="faculties" :programStudies="programStudies" @submit="update"
                             :is-disabled="!isEditing" :is-editing="isEditing" @edit-toggle="isEditing = !isEditing" />
                     </div>
@@ -107,10 +119,12 @@ const backToRespondents = () => {
                         <QuestionnaireResults :questionnaire="questionnaire" />
                     </div>
                     <div v-else-if="activeMenu === 'respondents'">
-                        <QuestionnaireRespondents :questionnaire="questionnaire" @show-answers="showRespondentAnswers" />
+                        <QuestionnaireRespondents :questionnaire="questionnaire" @show-answers="showRespondentAnswers"
+                            :respondents="respondents" />
                     </div>
                     <div v-else-if="activeMenu === 'respondent-answers'">
-                        <RespondentAnswers :questionnaire="questionnaire" :userId="selectedUserId" @back="backToRespondents" />
+                        <RespondentAnswers :questionnaire="questionnaire" :userId="selectedUserId"
+                            @back="backToRespondents" />
                     </div>
                 </div>
             </div>

@@ -79,9 +79,13 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:mahasiswa,dosen,mitra,pegawai')->group(function () {
+        // =========== List Kuesioner ===========
+        Route::get('/questionnaires-list', [AnswerController::class, 'index'])->name('answers.index');
+        
         // =========== Jawaban Kuesioner ===========
-        Route::get('/questionnaires/{questionnaire}/answers', [AnswerController::class, 'index'])->name('answers.index');
+        Route::get('/questionnaires/{questionnaire}/answers', [AnswerController::class, 'show'])->name('answers.show');
         Route::post('/questionnaires/{questionnaire}/answers', [AnswerController::class, 'store'])->name('answers.store');
+        Route::get('/questionnaires/{questionnaire}/submitted-answers', [AnswerController::class, 'submitted'])->name('answers.submitted');
     });
 });
 

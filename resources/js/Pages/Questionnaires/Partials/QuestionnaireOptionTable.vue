@@ -1,10 +1,11 @@
 <script setup>
-import { defineProps, ref, reactive, computed } from 'vue';
+import { defineProps, ref, computed } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import BaseButton from '@/Components/BaseButton.vue';
 import BaseInput from '@/Components/BaseInput.vue';
 import DataTable from '@/Components/DataTable.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
+import BaseAlert from '@/Components/BaseAlert.vue';
 
 const props = defineProps({
     questionnaire: Object,
@@ -21,6 +22,10 @@ const confirmDeleteModal = ref(null);
 
 const sortedOptions = computed(() => {
     return [...props.questionOptions].sort((a, b) => a.order - b.order);
+});
+
+const hasAnswers = computed(() => {
+    return props.questionnaire.total_answers > 0;
 });
 
 const addForm = useForm({
@@ -115,12 +120,10 @@ const deleteOption = () => {
     }
 };
 
-// Computed property untuk cek apakah form tambah tidak valid
 const isAddFormInvalid = computed(() => {
     return addForm.processing || !addForm.option_text || !addForm.option_value || !addForm.order || !!addingOrderError.value;
 });
 
-// Computed property untuk cek apakah form edit tidak valid
 const isEditFormInvalid = computed(() => {
     return editForm.processing || !editForm.option_text || !editForm.option_value || !editForm.order;
 });
@@ -128,16 +131,21 @@ const isEditFormInvalid = computed(() => {
 </script>
 
 <template>
+    <BaseAlert v-if="hasAnswers" type="warning" title="Kuesioner Telah Dijawab"
+        message="Kuesioner ini sudah memiliki jawaban. Opsi jawaban tidak dapat diubah, ditambah, atau dihapus untuk menjaga konsistensi data."
+        class="" />
+
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title">Daftar Opsi</h3>
-            <BaseButton type="button" variant="primary" @click="startAdd" v-if="!isAdding">
+            <BaseButton type="button" variant="primary" @click="startAdd" v-if="!isAdding && !hasAnswers">
                 <i class="fa-solid fa-plus me-2"></i> Tambah Opsi
             </BaseButton>
         </div>
+
         <DataTable :data="{ data: sortedOptions }" :columns="columns">
             <template #before-tbody>
-                <tr v-if="isAdding">
+                <tr v-if="isAdding && !hasAnswers">
                     <td class="w-10">
                         <BaseInput type="number" v-model="addForm.order"
                             :error="addForm.errors.order || addingOrderError" :disabled="addForm.processing" />
@@ -193,16 +201,18 @@ const isEditFormInvalid = computed(() => {
             </template>
             <template #cell(actions)="{ item }">
                 <div v-if="isEditing !== item.id" class="d-flex gap-2">
-                    <BaseButton variant="info" class="btn-icon" outline @click.prevent="startEdit(item)">
+                    <BaseButton variant="info" class="btn-icon" outline @click.prevent="startEdit(item)"
+                        :disabled="hasAnswers">
                         <i class="fa-solid fa-pencil-alt"></i>
                     </BaseButton>
                     <BaseButton variant="danger" class="btn-icon" outline data-bs-toggle="modal"
-                        data-bs-target="#confirmDeleteModal" @click.prevent="confirmDelete(item)">
+                        data-bs-target="#confirmDeleteModal" @click.prevent="confirmDelete(item)"
+                        :disabled="hasAnswers">
                         <i class="fa-solid fa-trash"></i>
                     </BaseButton>
                 </div>
                 <div v-else class="d-flex gap-2">
-                    <BaseButton type="button" @click="updateOption(item.id)" :disabled="isEditFormInvalid"
+                    <BaseButton type="button" @click="updateOption(item.id)" :disabled="isEditFormInvalid || hasAnswers"
                         label="Simpan" variant="primary" />
                     <BaseButton type="button" @click="cancelEdit" label="Batal" variant="secondary" outline />
                 </div>
