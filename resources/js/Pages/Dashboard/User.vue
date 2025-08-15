@@ -1,77 +1,175 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 
 const props = defineProps({
     questionnaires: Array,
+    completedQuestionnairesCount: Number,
+    uncompletedQuestionnairesCount: Number,
 });
 
-const userName = computed(() => {
-    return usePage().props.auth.user.name;
+const page = usePage();
+const userName = page.props.auth.user.name;
+// const activeRoleName = page.props.auth.user.active_role.name;
+
+const activeRole = computed(() => {
+    const activeRoleId = page.props.auth.activeRoleId;
+    if (activeRoleId) {
+        return page.props.auth.user.roles.find(role => role.id === activeRoleId);
+    }
+    return page.props.auth.user.roles[0];
 });
 
-// Computed property untuk mengelompokkan kuesioner berdasarkan peran target
-const groupedQuestionnaires = computed(() => {
-    const groups = {};
-    props.questionnaires.forEach(q => {
-        if (!groups[q.targetRole]) {
-            groups[q.targetRole] = [];
-        }
-        groups[q.targetRole].push(q);
-    });
-    return groups;
+onMounted(() => {
+    // Bar Chart Progres Pengisian Kuesioner
+    const completionData = [props.completedQuestionnairesCount, props.uncompletedQuestionnairesCount];
+    const completionLabels = ['Selesai', 'Belum Diisi'];
+
+    if (completionData.length > 0) {
+        window.ApexCharts && (new ApexCharts(document.getElementById('chart-questionnaire-progress'), {
+            chart: {
+                type: 'bar',
+                fontFamily: 'inherit',
+                height: 250,
+                parentHeightOffset: 0,
+                toolbar: {
+                    show: false,
+                },
+                animations: {
+                    enabled: false
+                },
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: false,
+                    columnWidth: '50%',
+                    endingShape: 'rounded'
+                },
+            },
+            dataLabels: {
+                enabled: false,
+            },
+            stroke: {
+                show: true,
+                width: 2,
+                colors: ['transparent']
+            },
+            series: [{
+                name: 'Jumlah Kuesioner',
+                data: completionData
+            }],
+            xaxis: {
+                categories: completionLabels,
+            },
+            yaxis: {
+                title: {
+                    text: 'Jumlah'
+                }
+            },
+            fill: {
+                opacity: 1
+            },
+            tooltip: {
+                y: {
+                    formatter: function (val) {
+                        return val + " kuesioner"
+                    }
+                }
+            },
+            colors: [
+                '#4F9C6E', // Selesai
+                '#F03D51'  // Belum Diisi
+            ],
+            legend: {
+                show: false,
+            },
+        })).render();
+    }
 });
 </script>
 
 <template>
+
     <Head title="Dashboard" />
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Dashboard</h2>
+            <h2 class="page-title">Dashboard Pengguna</h2>
         </template>
 
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 text-gray-900">
-                        <h3 class="text-xl font-bold mb-4">Selamat Datang, {{ userName }}!</h3>
-                        <p class="text-base text-gray-700">Berikut adalah daftar kuesioner yang harus Anda isi.</p>
-                        
-                        <!-- Looping untuk setiap grup peran -->
-                        <div v-for="(questionnaires, role) in groupedQuestionnaires" :key="role" class="mt-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h3 class="card-title">Kuesioner untuk {{ role }}</h3>
-                                </div>
-                                <div class="list-group list-group-flush">
-                                    <div v-if="questionnaires.length > 0" v-for="q in questionnaires" :key="q.id" class="list-group-item">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h4 class="mb-1">{{ q.name }}</h4>
-                                                <div class="text-muted small">
-                                                    Batas Waktu: {{ q.dueDate }}
-                                                </div>
-                                            </div>
-                                            <div class="d-flex align-items-center">
-                                                <span :class="q.status === 'Diisi' ? 'badge bg-success-lt me-3' : 'badge bg-warning-lt me-3'">
-                                                    {{ q.status }}
-                                                </span>
-                                                <Link v-if="q.status === 'Belum Diisi'" :href="route('answers.show', { questionnaire: q.id })">
-                                                    <BaseButton variant="primary" size="sm">Isi Kuesioner</BaseButton>
-                                                </Link>
-                                                <BaseButton v-else variant="secondary" size="sm" disabled>Sudah Diisi</BaseButton>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div v-else class="list-group-item text-center text-muted">
-                                        Tidak ada kuesioner yang tersedia untuk Anda dalam peran ini.
-                                    </div>
+        <div class="page-body">
+            <div class="container-xl">
+                <div class="col-12 mb-3">
+                    <div class="card card-md">
+                        <div class="card-stamp card-stamp-lg">
+                            <div class="card-stamp-icon bg-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    class="icon icon-tabler icons-tabler-outline icon-tabler-user-check">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+                                    <path d="M6 21v-2a4 4 0 0 1 4 -4h4" />
+                                    <path d="M15 19l2 2l4 -4" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-11">
+                                    <h3 class="h1">Halo, {{ userName }}!</h3>
+                                    <p class="text-muted mb-2">
+                                        Selamat datang kembali di Sikus — Sistem Kuesioner & Survei Universitas Potensi
+                                        Utama.
+                                    </p>
+                                    <p class="text-muted">
+                                        Anda saat ini beroperasi sebagai:
+                                        <span class="fw-bold" v-if="activeRole">{{ activeRole.name }}</span>
+                                        <span class="fw-bold" v-else>{{ page.props.auth.user.roles[0].name }}</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
+                <!-- Progres Pengisian Kuesioner (Bar Chart) -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Progres Pengisian Kuesioner</h3>
+                    </div>
+                    <div class="card-body">
+                        <div v-if="props.questionnaires.length > 0" id="chart-questionnaire-progress"></div>
+                        <div v-else class="d-flex justify-content-center align-items-center" style="height: 250px;">
+                            <p class="text-muted">Tidak ada kuesioner yang tersedia untuk Anda.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daftar Kuesioner -->
+                <div class="card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">Daftar Kuesioner</h3>
+                    </div>
+                    <div v-if="questionnaires.length > 0" class="list-group list-group-flush">
+                        <div v-for="q in questionnaires" :key="q.id"
+                            class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold">{{ q.name }}</div>
+                                <small class="text-muted">
+                                    Status: <span
+                                        :class="{ 'text-success': q.status === 'Diisi', 'text-danger': q.status === 'Belum Diisi' }">{{
+                                        q.status }}</span>
+                                </small>
+                            </div>
+                            <Link :href="route('answers.submitted', q)" class="btn btn-outline-primary btn-sm">
+                            {{ q.status === 'Diisi' ? 'Lihat Jawaban' : 'Isi Sekarang' }}
+                            </Link>
+                        </div>
+                    </div>
+                    <div v-else class="p-4 text-center text-muted">
+                        <p class="mb-0">Tidak ada kuesioner yang tersedia untuk Anda.</p>
                     </div>
                 </div>
             </div>

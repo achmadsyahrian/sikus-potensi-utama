@@ -38,7 +38,7 @@
     <script src="https://kit.fontawesome.com/4dc3168260.js" crossorigin="anonymous"></script>
     
     <!-- Libs JS -->
-    {{-- <script src="{{ asset('assets/libs/apexcharts/dist/apexcharts.min.js?1684106062') }}" defer></script> --}}
+    <script src="{{ asset('assets/libs/apexcharts/dist/apexcharts.min.js?1684106062') }}" defer></script>
     {{-- <script src="{{ asset('assets/libs/jsvectormap/dist/js/jsvectormap.min.js?1684106062') }}" defer></script> --}}
     {{-- <script src="{{ asset('assets/libs/jsvectormap/dist/maps/world.js?1684106062') }}" defer></script>
     <script src="{{ asset('assets/libs/jsvectormap/dist/maps/world-merc.js?1684106062') }}" defer></script> --}}

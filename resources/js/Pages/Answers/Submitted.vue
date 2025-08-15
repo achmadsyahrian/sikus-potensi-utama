@@ -8,8 +8,9 @@ const props = defineProps({
     submittedAnswers: Array,
 });
 
+// Mengambil semua pertanyaan, baik dari kategori atau langsung dari kuesioner
 const allQuestions = computed(() => {
-    return props.questionnaire.categories.flatMap(category => category.questions);
+    return props.questionnaire.questions;
 });
 
 // Fungsi untuk mendapatkan objek jawaban lengkap untuk sebuah pertanyaan
@@ -24,10 +25,6 @@ const getOptionText = (question, answer) => {
     }
     const option = props.questionnaire.options.find(o => o.option_value == answer.answer_value);
     return option ? option.option_text : null;
-};
-
-const getCategoryName = (question) => {
-    return question.category ? question.category.name : 'Tanpa Kategori';
 };
 
 // Fungsi untuk mendapatkan tanggal dari jawaban, jika ada
@@ -83,11 +80,10 @@ const getAnswerDate = (questionId) => {
                         <div class="flex-grow-1">
                             <div class="fw-semibold mb-1">{{ question.question_text }}</div>
                             <small class="text-muted d-block mb-2">
-                                {{ getCategoryName(question) }} • Tipe: {{ question.question_type === 'multiple_choice'
-                                    ?
-                                'Pilihan Ganda' : 'Teks Bebas' }}
+                                Tipe: {{ question.question_type === 'multiple_choice' ?
+                                        'Pilihan Ganda' : 'Teks Bebas' }}
                                 <span v-if="getAnswerDate(question.id)">• Dijawab pada {{ getAnswerDate(question.id)
-                                    }}</span>
+                                        }}</span>
                             </small>
                             <div class="mt-2 fw-bold pe-4">
                                 <!-- <p class="mb-0">Jawaban Anda:</p> -->
