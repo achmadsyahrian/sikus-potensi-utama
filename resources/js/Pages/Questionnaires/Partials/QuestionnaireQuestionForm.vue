@@ -35,7 +35,7 @@ const props = defineProps({
             </select>
             <div v-if="form.errors.question_type" class="invalid-feedback">{{ form.errors.question_type }}</div>
         </div>
-        <div class="col-md-6 mb-3">
+        <div v-if="!editingQuestion" class="col-md-6 mb-3">
             <label for="category_id" class="form-label">Kategori (Opsional)</label>
             <select id="category_id" v-model="form.category_id" class="form-select"
                 :class="{ 'is-invalid': form.errors.category_id }">

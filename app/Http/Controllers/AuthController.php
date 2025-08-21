@@ -75,7 +75,6 @@ class AuthController extends Controller
                     (new LecturerService())->syncLecturer($user, $sevimaData);
                 }
 
-                // Logika lama untuk Mahasiswa
                 $isMahasiswa = collect($sevimaRoles)->contains('id_role', 'mhs');
                 if ($isMahasiswa) {
                     $mahasiswaRole = Role::where('slug', 'mahasiswa')->first();
@@ -87,6 +86,14 @@ class AuthController extends Controller
 
                     $sevimaData = MahasiswaService::fetchStudentsByNim($nim);
                     (new MahasiswaService())->syncStudent($user, $sevimaData);
+                }
+
+                $isPegawai = collect($sevimaRoles)->whereNotIn('id_role', ['dosen', 'mhs', 'ortu'])->isNotEmpty();
+                if ($isPegawai) {
+                    $pegawaiRole = Role::where('slug', 'pegawai')->first();
+                    if ($pegawaiRole) {
+                        $user->roles()->syncWithoutDetaching([$pegawaiRole->id]);
+                    }
                 }
 
                 Auth::login($user, $request->remember);

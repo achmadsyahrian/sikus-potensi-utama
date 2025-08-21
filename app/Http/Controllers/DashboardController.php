@@ -52,12 +52,12 @@ class DashboardController extends Controller
 
         $totalResponsesByFaculty = DB::table('answers')
             ->join('student_details', 'answers.user_id', '=', 'student_details.user_id')
-            ->join('program_studies', 'student_details.study_program', '=', 'program_studies.program_study_code')
+            ->join('program_studies', 'student_details.program_study_code', '=', 'program_studies.program_study_code')
             ->join('faculties', 'program_studies.faculty_code', '=', 'faculties.faculty_code')
             ->select('faculties.name as faculty_name', DB::raw('count(answers.id) as total'))
             ->groupBy('faculties.name')
             ->get();
-        
+
         $responsesByRoleAndMonth = DB::table('answers')
             ->join('roles', 'answers.role_id', '=', 'roles.id')
             ->select('roles.name as role_name', DB::raw('DATE_FORMAT(answers.created_at, "%Y-%m") as month'), DB::raw('count(answers.id) as total'))
@@ -83,7 +83,7 @@ class DashboardController extends Controller
 
         $totalResponsesByProgramStudy = DB::table('answers')
             ->join('student_details', 'answers.user_id', '=', 'student_details.user_id')
-            ->join('program_studies', 'student_details.study_program', '=', 'program_studies.program_study_code')
+            ->join('program_studies', 'student_details.program_study_code', '=', 'program_studies.program_study_code')
             ->select('program_studies.name as program_study_name', DB::raw('count(answers.id) as total'))
             ->groupBy('program_studies.name')
             ->get();

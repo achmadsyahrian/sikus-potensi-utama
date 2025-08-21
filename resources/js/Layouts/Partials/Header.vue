@@ -39,7 +39,7 @@ const isUser = computed(() => ['dosen', 'pegawai', 'mahasiswa', 'mitra'].include
             <div class="navbar-nav flex-row order-md-last">
                 <div class="d-none d-md-flex">
                     <!-- Notification Dropdown -->
-                    <div class="nav-item dropdown d-none d-md-flex me-3">
+                    <!-- <div class="nav-item dropdown d-none d-md-flex me-3">
                         <a href="#" class="nav-link px-0" data-bs-toggle="dropdown" tabindex="-1"
                             aria-label="Show notifications">
                             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24"
@@ -86,7 +86,7 @@ const isUser = computed(() => ['dosen', 'pegawai', 'mahasiswa', 'mitra'].include
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
 
                 <div class="nav-item dropdown">

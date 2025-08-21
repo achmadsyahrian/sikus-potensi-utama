@@ -11,7 +11,6 @@ const props = defineProps({
 
 const page = usePage();
 const userName = page.props.auth.user.name;
-// const activeRoleName = page.props.auth.user.active_role.name;
 
 const activeRole = computed(() => {
     const activeRoleId = page.props.auth.activeRoleId;
@@ -26,66 +25,68 @@ onMounted(() => {
     const completionData = [props.completedQuestionnairesCount, props.uncompletedQuestionnairesCount];
     const completionLabels = ['Selesai', 'Belum Diisi'];
 
-    if (completionData.length > 0) {
-        window.ApexCharts && (new ApexCharts(document.getElementById('chart-questionnaire-progress'), {
-            chart: {
-                type: 'bar',
-                fontFamily: 'inherit',
-                height: 250,
-                parentHeightOffset: 0,
-                toolbar: {
+    setTimeout(() => {
+        if (completionData.length > 0) {
+            window.ApexCharts && (new ApexCharts(document.getElementById('chart-questionnaire-progress'), {
+                chart: {
+                    type: 'bar',
+                    fontFamily: 'inherit',
+                    height: 250,
+                    parentHeightOffset: 0,
+                    toolbar: {
+                        show: false,
+                    },
+                    animations: {
+                        enabled: false
+                    },
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: false,
+                        columnWidth: '50%',
+                        endingShape: 'rounded'
+                    },
+                },
+                dataLabels: {
+                    enabled: false,
+                },
+                stroke: {
+                    show: true,
+                    width: 2,
+                    colors: ['transparent']
+                },
+                series: [{
+                    name: 'Jumlah Kuesioner',
+                    data: completionData
+                }],
+                xaxis: {
+                    categories: completionLabels,
+                },
+                yaxis: {
+                    title: {
+                        text: 'Jumlah'
+                    }
+                },
+                fill: {
+                    opacity: 1
+                },
+                tooltip: {
+                    y: {
+                        formatter: function (val) {
+                            return val + " kuesioner"
+                        }
+                    }
+                },
+                colors: [
+                    '#4F9C6E', // Selesai
+                    '#F03D51'  // Belum Diisi
+                ],
+                legend: {
                     show: false,
                 },
-                animations: {
-                    enabled: false
-                },
-            },
-            plotOptions: {
-                bar: {
-                    horizontal: false,
-                    columnWidth: '50%',
-                    endingShape: 'rounded'
-                },
-            },
-            dataLabels: {
-                enabled: false,
-            },
-            stroke: {
-                show: true,
-                width: 2,
-                colors: ['transparent']
-            },
-            series: [{
-                name: 'Jumlah Kuesioner',
-                data: completionData
-            }],
-            xaxis: {
-                categories: completionLabels,
-            },
-            yaxis: {
-                title: {
-                    text: 'Jumlah'
-                }
-            },
-            fill: {
-                opacity: 1
-            },
-            tooltip: {
-                y: {
-                    formatter: function (val) {
-                        return val + " kuesioner"
-                    }
-                }
-            },
-            colors: [
-                '#4F9C6E', // Selesai
-                '#F03D51'  // Belum Diisi
-            ],
-            legend: {
-                show: false,
-            },
-        })).render();
-    }
+            })).render();
+        }
+    }, 500);
 });
 </script>
 
@@ -160,10 +161,11 @@ onMounted(() => {
                                 <small class="text-muted">
                                     Status: <span
                                         :class="{ 'text-success': q.status === 'Diisi', 'text-danger': q.status === 'Belum Diisi' }">{{
-                                        q.status }}</span>
+                                            q.status }}</span>
                                 </small>
                             </div>
-                            <Link :href="route('answers.submitted', q)" class="btn btn-outline-primary btn-sm">
+                            <Link :href="route(q.status === 'Diisi' ? 'answers.submitted' : 'answers.show', q)"
+                                class="btn btn-outline-primary btn-sm">
                             {{ q.status === 'Diisi' ? 'Lihat Jawaban' : 'Isi Sekarang' }}
                             </Link>
                         </div>

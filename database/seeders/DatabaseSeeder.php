@@ -2,9 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,7 +17,19 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             RoleSeeder::class,
-            UserSeeder::class,
         ]);
+
+        $superadminRole = Role::firstOrCreate(['slug' => 'superadmin'],['name' => 'Superadmin']);
+
+        $superadmin = User::firstOrCreate(
+            ['email' => 'superadmin@potensi-utama.ac.id'],
+            [
+                'name' => 'Superadmin',
+                'password' => Hash::make('potensiutama'),
+                'auth_provider' => 'local',
+            ]
+        );
+
+        $superadmin->roles()->attach($superadminRole->id);
     }
 }

@@ -25,9 +25,9 @@ const props = defineProps({
 });
 
 const stats = [
+    { label: "Total Kuesioner", value: props.totalQuestionnairesCount, icon: "fa-file-alt", color: "bg-info" },
     { label: "Kuesioner Aktif", value: props.activeQuestionnairesCount, icon: "fa-list-check", color: "bg-primary" },
     { label: "Total Jawaban", value: props.totalResponsesCount, icon: "fa-poll-h", color: "bg-success" },
-    { label: "Total Kuesioner", value: props.totalQuestionnairesCount, icon: "fa-file-alt", color: "bg-info" },
     { label: "Total Fakultas", value: props.totalFacultiesCount, icon: "fa-building", color: "bg-warning" },
     { label: "Total Program Studi", value: props.totalProgramStudiesCount, icon: "fa-graduation-cap", color: "bg-danger" },
     { label: "Periode Akademik", value: props.totalAcademicPeriodsCount, icon: "fa-calendar", color: "bg-secondary" },
@@ -37,256 +37,258 @@ const stats = [
 ];
 
 onMounted(() => {
-    // Pie Chart Responses by Faculty
-    const facultyData = props.totalResponsesByFaculty.map(item => item.total);
-    const facultyLabels = props.totalResponsesByFaculty.map(item => item.faculty_name);
+    setTimeout(() => {
+        // Pie Chart Responses by Faculty
+        const facultyData = props.totalResponsesByFaculty.map(item => item.total);
+        const facultyLabels = props.totalResponsesByFaculty.map(item => item.faculty_name);
 
-    window.ApexCharts && (new ApexCharts(document.getElementById('chart-responses-by-faculty'), {
-        chart: {
-            type: "donut",
-            fontFamily: 'inherit',
-            height: 240,
-            sparkline: {
-                enabled: true
+        window.ApexCharts && (new ApexCharts(document.getElementById('chart-responses-by-faculty'), {
+            chart: {
+                type: "donut",
+                fontFamily: 'inherit',
+                height: 240,
+                sparkline: {
+                    enabled: true
+                },
+                animations: {
+                    enabled: false
+                },
             },
-            animations: {
-                enabled: false
+            fill: {
+                opacity: 1,
             },
-        },
-        fill: {
-            opacity: 1,
-        },
-        series: facultyData,
-        labels: facultyLabels,
-        tooltip: {
-            theme: 'dark'
-        },
-        grid: {
-            strokeDashArray: 4,
-        },
-        colors: [
-            '#F03D51',
-            '#3E8ED0',
-            '#4F9C6E',
-            '#F7C948',
-            '#9C27B0',
-            '#607D8B'
-        ],
-        legend: {
-            show: true,
-            position: 'bottom',
-            offsetY: 12,
-            markers: {
-                width: 10,
-                height: 10,
-                radius: 100,
+            series: facultyData,
+            labels: facultyLabels,
+            tooltip: {
+                theme: 'dark'
             },
-            itemMargin: {
-                horizontal: 8,
-                vertical: 8
+            grid: {
+                strokeDashArray: 4,
             },
-        },
-        tooltip: {
-            fillSeriesColor: false
-        },
-    })).render();
+            colors: [
+                '#F03D51',
+                '#3E8ED0',
+                '#4F9C6E',
+                '#F7C948',
+                '#9C27B0',
+                '#607D8B'
+            ],
+            legend: {
+                show: true,
+                position: 'bottom',
+                offsetY: 12,
+                markers: {
+                    width: 10,
+                    height: 10,
+                    radius: 100,
+                },
+                itemMargin: {
+                    horizontal: 8,
+                    vertical: 8
+                },
+            },
+            tooltip: {
+                fillSeriesColor: false
+            },
+        })).render();
 
-    // Pie Chart Responses by Role
-    const roleData = props.totalResponsesByRole.map(item => item.total);
-    const roleLabels = props.totalResponsesByRole.map(item => item.role_name);
+        // Pie Chart Responses by Role
+        const roleData = props.totalResponsesByRole.map(item => item.total);
+        const roleLabels = props.totalResponsesByRole.map(item => item.role_name);
 
-    window.ApexCharts && (new ApexCharts(document.getElementById('chart-responses-by-role'), {
-        chart: {
-            type: "donut",
-            fontFamily: 'inherit',
-            height: 240,
-            sparkline: {
-                enabled: true
+        window.ApexCharts && (new ApexCharts(document.getElementById('chart-responses-by-role'), {
+            chart: {
+                type: "donut",
+                fontFamily: 'inherit',
+                height: 240,
+                sparkline: {
+                    enabled: true
+                },
+                animations: {
+                    enabled: false
+                },
             },
-            animations: {
-                enabled: false
+            fill: {
+                opacity: 1,
             },
-        },
-        fill: {
-            opacity: 1,
-        },
-        series: roleData,
-        labels: roleLabels,
-        tooltip: {
-            theme: 'dark'
-        },
-        grid: {
-            strokeDashArray: 4,
-        },
-        colors: [
-            '#4F9C6E',
-            '#F03D51',
-            '#3E8ED0',
-            '#F7C948'
-        ],
-        legend: {
-            show: true,
-            position: 'bottom',
-            offsetY: 12,
-            markers: {
-                width: 10,
-                height: 10,
-                radius: 100,
+            series: roleData,
+            labels: roleLabels,
+            tooltip: {
+                theme: 'dark'
             },
-            itemMargin: {
-                horizontal: 8,
-                vertical: 8
+            grid: {
+                strokeDashArray: 4,
             },
-        },
-        tooltip: {
-            fillSeriesColor: false
-        },
-    })).render();
+            colors: [
+                '#4F9C6E',
+                '#F03D51',
+                '#3E8ED0',
+                '#F7C948'
+            ],
+            legend: {
+                show: true,
+                position: 'bottom',
+                offsetY: 12,
+                markers: {
+                    width: 10,
+                    height: 10,
+                    radius: 100,
+                },
+                itemMargin: {
+                    horizontal: 8,
+                    vertical: 8
+                },
+            },
+            tooltip: {
+                fillSeriesColor: false
+            },
+        })).render();
 
-    // Line Chart Monthly Responses by Role
-    window.ApexCharts && (new ApexCharts(document.getElementById('chart-monthly-responses'), {
-        chart: {
-            type: "line",
-            fontFamily: 'inherit',
-            height: 288,
-            parentHeightOffset: 0,
-            toolbar: {
-                show: false,
+        // Line Chart Monthly Responses by Role
+        window.ApexCharts && (new ApexCharts(document.getElementById('chart-monthly-responses'), {
+            chart: {
+                type: "line",
+                fontFamily: 'inherit',
+                height: 288,
+                parentHeightOffset: 0,
+                toolbar: {
+                    show: false,
+                },
+                animations: {
+                    enabled: false
+                },
             },
-            animations: {
-                enabled: false
+            fill: {
+                opacity: 1,
             },
-        },
-        fill: {
-            opacity: 1,
-        },
-        stroke: {
-            width: 2,
-            lineCap: "round",
-            curve: "smooth",
-        },
-        series: props.monthlyResponses,
-        tooltip: {
-            theme: 'dark'
-        },
-        grid: {
-            padding: {
-                top: -20,
-                right: 0,
-                left: -4,
-                bottom: -4
+            stroke: {
+                width: 2,
+                lineCap: "round",
+                curve: "smooth",
             },
-            strokeDashArray: 4,
+            series: props.monthlyResponses,
+            tooltip: {
+                theme: 'dark'
+            },
+            grid: {
+                padding: {
+                    top: -20,
+                    right: 0,
+                    left: -4,
+                    bottom: -4
+                },
+                strokeDashArray: 4,
+                xaxis: {
+                    lines: {
+                        show: true
+                    }
+                },
+            },
             xaxis: {
-                lines: {
-                    show: true
+                labels: {
+                    padding: 0,
+                },
+                tooltip: {
+                    enabled: false
+                },
+                categories: props.monthlyLabels,
+            },
+            yaxis: {
+                labels: {
+                    padding: 4
+                },
+            },
+            colors: [
+                '#F03D51',
+                '#3E8ED0',
+                '#4F9C6E',
+                '#F7C948',
+                '#9C27B0',
+                '#607D8B'
+            ],
+            legend: {
+                show: true,
+                position: 'bottom',
+                offsetY: 12,
+                markers: {
+                    width: 10,
+                    height: 10,
+                    radius: 100,
+                },
+                itemMargin: {
+                    horizontal: 8,
+                    vertical: 8
+                },
+            },
+        })).render();
+
+        // Bar Chart Responses by Program Study
+        const programStudyData = props.totalResponsesByProgramStudy.map(item => item.total);
+        const programStudyLabels = props.totalResponsesByProgramStudy.map(item => item.program_study_name);
+
+        window.ApexCharts && (new ApexCharts(document.getElementById('chart-responses-by-program-study'), {
+            chart: {
+                type: "bar",
+                fontFamily: 'inherit',
+                height: 320,
+                parentHeightOffset: 0,
+                toolbar: {
+                    show: false,
+                },
+                animations: {
+                    enabled: false
+                },
+            },
+            plotOptions: {
+                bar: {
+                    columnWidth: '50%',
                 }
             },
-        },
-        xaxis: {
-            labels: {
-                padding: 0,
+            dataLabels: {
+                enabled: false,
             },
+            fill: {
+                opacity: 1,
+            },
+            series: [{
+                name: "Total Jawaban",
+                data: programStudyData
+            }],
             tooltip: {
-                enabled: false
+                theme: 'dark'
             },
-            categories: props.monthlyLabels,
-        },
-        yaxis: {
-            labels: {
-                padding: 4
+            grid: {
+                padding: {
+                    top: -20,
+                    right: 0,
+                    left: -4,
+                    bottom: -4
+                },
+                strokeDashArray: 4,
             },
-        },
-        colors: [
-            '#F03D51', // Warna untuk role pertama (misal: Dosen)
-            '#3E8ED0', // Warna untuk role kedua (misal: Mahasiswa)
-            '#4F9C6E', // Warna untuk role ketiga (misal: Pegawai)
-            '#F7C948', // Warna untuk role keempat (misal: Mitra)
-            '#9C27B0',
-            '#607D8B'
-        ],
-        legend: {
-            show: true,
-            position: 'bottom',
-            offsetY: 12,
-            markers: {
-                width: 10,
-                height: 10,
-                radius: 100,
+            xaxis: {
+                labels: {
+                    padding: 0,
+                },
+                tooltip: {
+                    enabled: false
+                },
+                axisBorder: {
+                    show: false,
+                },
+                categories: programStudyLabels,
             },
-            itemMargin: {
-                horizontal: 8,
-                vertical: 8
+            yaxis: {
+                labels: {
+                    padding: 4
+                },
             },
-        },
-    })).render();
-
-    // Bar Chart Responses by Program Study
-    const programStudyData = props.totalResponsesByProgramStudy.map(item => item.total);
-    const programStudyLabels = props.totalResponsesByProgramStudy.map(item => item.program_study_name);
-
-    window.ApexCharts && (new ApexCharts(document.getElementById('chart-responses-by-program-study'), {
-        chart: {
-            type: "bar",
-            fontFamily: 'inherit',
-            height: 320,
-            parentHeightOffset: 0,
-            toolbar: {
+            colors: ["#206bc4"],
+            legend: {
                 show: false,
             },
-            animations: {
-                enabled: false
-            },
-        },
-        plotOptions: {
-            bar: {
-                columnWidth: '50%',
-            }
-        },
-        dataLabels: {
-            enabled: false,
-        },
-        fill: {
-            opacity: 1,
-        },
-        series: [{
-            name: "Total Jawaban",
-            data: programStudyData
-        }],
-        tooltip: {
-            theme: 'dark'
-        },
-        grid: {
-            padding: {
-                top: -20,
-                right: 0,
-                left: -4,
-                bottom: -4
-            },
-            strokeDashArray: 4,
-        },
-        xaxis: {
-            labels: {
-                padding: 0,
-            },
-            tooltip: {
-                enabled: false
-            },
-            axisBorder: {
-                show: false,
-            },
-            categories: programStudyLabels,
-        },
-        yaxis: {
-            labels: {
-                padding: 4
-            },
-        },
-        colors: ["#206bc4"],
-        legend: {
-            show: false,
-        },
-    })).render();
+        })).render();
+    }, 500); // Jeda 500ms
 });
 </script>
 

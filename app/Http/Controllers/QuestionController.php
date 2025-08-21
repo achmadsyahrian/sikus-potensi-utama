@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Question;
 use App\Models\Questionnaire;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class QuestionController extends Controller
@@ -43,16 +44,17 @@ class QuestionController extends Controller
         $originalOrder = $question->order;
 
         $totalQuestionsInCategory = $questionnaire->questions()
-            ->where('category_id', $request->category_id)
+            ->where('category_id', $question->category_id)
             ->count();
 
         $validated = $request->validate([
             'question_text' => ['required', 'string', 'max:500'],
             'question_type' => ['required', 'string', Rule::in(['multiple_choice', 'text'])],
-            'category_id' => ['nullable', 'exists:question_categories,id'],
             'is_required' => ['required', 'boolean'],
             'order' => ['required', 'integer', 'min:1', 'max:' . $totalQuestionsInCategory],
         ]);
+        
+        $validated['category_id'] = $question->category_id;
 
         if ($validated['order'] !== $originalOrder) {
             $existingQuestion = $questionnaire->questions()
