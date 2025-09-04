@@ -34,9 +34,9 @@ const selectRole = (roleId) => {
                 <div class="col-md-8 col-lg-6 col-xl-5">
                     <div class="text-center mb-4">
                         <ApplicationLogo width="90" class="mx-auto d-block" />
-                        <h1 class="h3 mt-2 text-primary">SIKUS</h1>
+                        <h1 class="h3 mt-2 text-primary">SIKU</h1>
                         <p class="text-muted small">
-                            Sistem Kuesioner & Survei Universitas Potensi Utama
+                            Sistem Kuesioner Universitas Potensi Utama
                         </p>
                     </div>
                     <div class="bg-white p-4 p-md-5 rounded-3 shadow" style="border-top: 4px solid #0062cc">

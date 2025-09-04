@@ -27,16 +27,16 @@ const appName = page.props.app_name;
                 <div class="card card-lg">
                     <div class="card-body">
                         <div class="markdown">
-                            <h3 class="fw-bold mb-3">Apa itu SIKUS?</h3>
+                            <h3 class="fw-bold mb-3">Apa itu SIKU?</h3>
                             <p>
-                                <strong>SIKUS</strong> adalah singkatan dari **Sistem Kuesioner dan Survei**. Aplikasi
+                                <strong>SIKU</strong> adalah singkatan dari **Sistem Kuesioner**. Aplikasi
                                 ini
                                 merupakan platform layanan kuesioner terintegrasi yang dirancang khusus untuk memenuhi
                                 kebutuhan
                                 evaluasi di **Universitas Potensi Utama**.
                             </p>
                             <p>
-                                Tujuan utama SIKUS adalah memfasilitasi pengumpulan data yang akurat dan relevan dari
+                                Tujuan utama SIKU adalah memfasilitasi pengumpulan data yang akurat dan relevan dari
                                 berbagai
                                 pihak, termasuk **mahasiswa, dosen, staf pegawai, dan mitra**. Dengan sistem ini,
                                 Universitas

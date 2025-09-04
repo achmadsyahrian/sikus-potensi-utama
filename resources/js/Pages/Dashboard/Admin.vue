@@ -326,7 +326,7 @@ onMounted(() => {
                                             class="fw-bold">{{
                                                 activeRole }}</span></p>
                                     <p class="text-muted">
-                                        Selamat datang kembali di Sikus — Sistem Kuesioner & Survei Universitas Potensi
+                                        Selamat datang kembali di Siku — Sistem Kuesioner Universitas Potensi
                                         Utama.
                                         Aplikasi ini dirancang untuk mempermudah pengelolaan, distribusi, dan analisis
                                         kuesioner

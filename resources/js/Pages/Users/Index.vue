@@ -137,7 +137,7 @@ const resetPassword = () => {
                                 </BaseButton>
                             </Link>
                         </BaseTooltip>
-                        <BaseTooltip title="Reset Kata Sandi" data-bs-toggle="tooltip" data-bs-placement="top">
+                        <BaseTooltip v-if="item.auth_provider !== 'sevima'" title="Reset Kata Sandi" data-bs-toggle="tooltip" data-bs-placement="top">
                             <BaseButton 
                                 variant="warning" 
                                 class="btn-icon" 

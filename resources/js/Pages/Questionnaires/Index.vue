@@ -21,6 +21,10 @@ const appName = page.props.app_name;
 // BARU: Ref untuk kuesioner yang akan dihapus
 const questionnaireToDelete = ref(null);
 
+const isSuperAdmin = computed(() => {
+    return page.props.auth.user?.roles?.some(role => role.name.toLowerCase() === 'superadmin') ?? false;
+});
+
 const showConfirmDeletionModal = (questionnaire) => {
     questionnaireToDelete.value = questionnaire;
 };
@@ -85,7 +89,7 @@ const columns = ref([
                             </Link>
                         </BaseTooltip>
                         
-                        <BaseTooltip v-if="item.total_answers === 0" title="Hapus Kuesioner" data-bs-toggle="tooltip" data-bs-placement="top">
+                        <BaseTooltip v-if="isSuperAdmin || item.total_answers === 0" title="Hapus Kuesioner" data-bs-toggle="tooltip" data-bs-placement="top">
                             <BaseButton 
                                 variant="danger" 
                                 class="btn-icon" 

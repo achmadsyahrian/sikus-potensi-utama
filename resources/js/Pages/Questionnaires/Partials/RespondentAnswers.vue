@@ -50,7 +50,7 @@ const activeRoleName = computed(() => {
 });
 
 const allQuestions = computed(() => {
-    return props.questionnaire.categories.flatMap(category => category.questions);
+    return props.questionnaire.questions || [];
 });
 
 // Fungsi untuk mendapatkan objek jawaban lengkap

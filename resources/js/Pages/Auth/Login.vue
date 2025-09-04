@@ -38,10 +38,10 @@ const submit = () => {
                     </a>
                 </div>
                 <h2 class="h3 text-center mb-1">
-                    SIKUS
+                    SIKU
                 </h2>
                 <p class="text-center text-muted mb-3">
-                    Sistem Kuesioner & Survei Universitas Potensi Utama
+                    Sistem Kuesioner Universitas Potensi Utama
                 </p>
 
                 <BaseAlert type="info" title="Gunakan akun SIAKAD Anda"

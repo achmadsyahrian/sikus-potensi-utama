@@ -24,7 +24,7 @@ class User extends Authenticatable
         'sevima_user_id',
         'auth_provider',
     ];
-    
+
     /**
      * The attributes that should be hidden for serialization.
      *
@@ -61,5 +61,10 @@ class User extends Authenticatable
     public function lecturerDetail()
     {
         return $this->hasOne(LecturerDetail::class);
+    }
+
+    public function hasRole(string $roleName): bool
+    {
+        return $this->roles()->where('name', $roleName)->exists();
     }
 }

@@ -121,7 +121,7 @@ onMounted(() => {
                                 <div class="col-11">
                                     <h3 class="h1">Halo, {{ userName }}!</h3>
                                     <p class="text-muted mb-2">
-                                        Selamat datang kembali di Sikus — Sistem Kuesioner & Survei Universitas Potensi
+                                        Selamat datang kembali di Siku — Sistem Kuesioner Universitas Potensi
                                         Utama.
                                     </p>
                                     <p class="text-muted">

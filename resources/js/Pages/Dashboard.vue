@@ -46,7 +46,7 @@ const appName = page.props.app_name;
                             <div class="col">
                                 <h2 class="h1">Halo, {{ page.props.auth.user.name }}! 👋</h2>
                                 <p class="text-muted">
-                                    Selamat datang kembali di SIKUS. Silakan kelola dan pantau seluruh kuesioner Anda
+                                    Selamat datang kembali di SIKU. Silakan kelola dan pantau seluruh kuesioner Anda
                                     dari sini.
                                 </p>
                             </div>

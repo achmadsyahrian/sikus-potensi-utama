@@ -108,7 +108,7 @@ class QuestionnaireController extends Controller
 
     public function destroy(Questionnaire $questionnaire)
     {
-        if ($questionnaire->answers()->exists()) {
+        if (!auth()->user()->hasRole('superadmin') && $questionnaire->answers()->exists()) {
             return redirect()->back()->with('error', 'Kuesioner tidak dapat dihapus karena sudah memiliki jawaban.');
         }
 
