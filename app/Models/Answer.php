@@ -16,6 +16,7 @@ class Answer extends Model
         'question_id',
         'answer_value',
         'role_id',
+        'respondent_external_id',
     ];
 
     public function user(): BelongsTo
@@ -26,6 +27,11 @@ class Answer extends Model
     public function questionnaire(): BelongsTo
     {
         return $this->belongsTo(Questionnaire::class);
+    }
+
+    public function respondentExternal()
+    {
+        return $this->belongsTo(RespondentExternal::class);
     }
 
     public function question(): BelongsTo

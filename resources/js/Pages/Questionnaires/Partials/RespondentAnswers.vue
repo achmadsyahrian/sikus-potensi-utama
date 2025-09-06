@@ -3,25 +3,32 @@ import { computed, ref, watch } from 'vue';
 import { defineProps, defineEmits } from 'vue';
 import BaseButton from '@/Components/BaseButton.vue';
 import QuestionnaireInfoCard from './QuestionnaireInfoCard.vue';
-import { usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
     questionnaire: Object,
-    userId: Number,
+    respondentType: String,
+    respondentId: Number,
 });
 
 const emit = defineEmits(['back']);
-const page = usePage();
-
 const activeRoleId = ref(null);
 
-const selectedUser = computed(() => {
-    return props.questionnaire.answers.find(answer => answer.user_id === props.userId)?.user;
+const selectedRespondent = computed(() => {
+    if (props.respondentType === 'internal') {
+        const answer = props.questionnaire.answers.find(a => a.user_id === props.respondentId);
+        return answer ? answer.user : null;
+    } else if (props.respondentType === 'external') {
+        const answer = props.questionnaire.answers.find(a => a.respondent_external_id === props.respondentId);
+        return answer ? answer.respondent_external : null;
+    }
+    return null;
 });
 
 const userRoles = computed(() => {
+    if (props.respondentType !== 'internal') return [];
+
     const roles = props.questionnaire.answers
-        .filter(answer => answer.user_id === props.userId)
+        .filter(answer => answer.user_id === props.respondentId)
         .map(answer => answer.role);
 
     const uniqueRoles = Array.from(new Set(roles.map(r => r.id)))
@@ -30,18 +37,41 @@ const userRoles = computed(() => {
     return uniqueRoles.filter(role => role !== null);
 });
 
-watch(() => props.userId, (newUserId) => {
-    if (newUserId && userRoles.value.length > 0) {
+watch(() => props.respondentId, () => {
+    if (props.respondentType === 'internal' && userRoles.value.length > 0) {
         activeRoleId.value = userRoles.value[0].id;
+    } else {
+        activeRoleId.value = null;
     }
 }, { immediate: true });
 
-const userAnswersByActiveRole = computed(() => {
-    if (!activeRoleId.value) return [];
 
-    return props.questionnaire.answers.filter(answer =>
-        answer.user_id === props.userId && answer.role_id === activeRoleId.value
-    );
+const respondentAnswers = computed(() => {
+    if (props.respondentType === 'internal') {
+        if (!activeRoleId.value) return [];
+        return props.questionnaire.answers.filter(a =>
+            a.user_id === props.respondentId && a.role_id === activeRoleId.value
+        );
+    } else if (props.respondentType === 'external') {
+        return props.questionnaire.answers.filter(a => a.respondent_external_id === props.respondentId);
+    }
+    return [];
+});
+
+const respondentName = computed(() => selectedRespondent.value?.name || '*Nama tidak ditemukan*');
+
+const respondentDetails = computed(() => {
+    if (props.respondentType === 'internal' && selectedRespondent.value) {
+        if (selectedRespondent.value.student_detail) {
+            return `NIM: ${selectedRespondent.value.student_detail?.nim}`;
+        }
+        if (selectedRespondent.value.lecturer_detail) {
+            return `NIDN: ${selectedRespondent.value.lecturer_detail?.nidn}`;
+        }
+    } else if (props.respondentType === 'external' && selectedRespondent.value) {
+        return `Perusahaan / PT: ${selectedRespondent.value.company_or_institution} <br>Kontak: ${selectedRespondent.value.contact_number}`;
+    }
+    return '-';
 });
 
 const activeRoleName = computed(() => {
@@ -49,17 +79,23 @@ const activeRoleName = computed(() => {
     return role ? role.name : 'Peran tidak ditemukan';
 });
 
-const allQuestions = computed(() => {
-    return props.questionnaire.questions || [];
+const respondentTypeDisplay = computed(() => {
+    if (props.respondentType === 'internal') {
+        const roles = respondentAnswers.value.map(a => a.user.roles).flat().map(r => r.name);
+        return Array.from(new Set(roles)).join(', ');
+    }
+    return 'Eksternal';
 });
 
-// Fungsi untuk mendapatkan objek jawaban lengkap
+const allQuestions = computed(() => props.questionnaire.questions || []);
+
 const getAnswerObjectForQuestion = (questionId) => {
-    return userAnswersByActiveRole.value.find(answer => answer.question_id === questionId);
+    return respondentAnswers.value.find(answer => answer.question_id === questionId);
 };
 
 const getAnswerForQuestion = (questionId) => {
-    return getAnswerObjectForQuestion(questionId)?.answer_value;
+    const answer = getAnswerObjectForQuestion(questionId);
+    return answer?.answer_value || null;
 };
 
 const getOptionText = (optionValue) => {
@@ -110,12 +146,8 @@ const getAnswerDate = (questionId) => {
                         </div>
                         <div>
                             <div class="fw-semibold small text-muted">Nama Responden</div>
-                            <div class="fw-bold">{{ selectedUser?.name }}</div>
-                            <div v-if="selectedUser?.student_detail" class="small text-muted">
-                                NIM: {{ selectedUser?.student_detail?.nim }}
-                            </div>
-                            <div v-else-if="selectedUser?.lecturer_detail" class="small text-muted">
-                                NIDN: {{ selectedUser?.lecturer_detail?.nidn }}
+                            <div class="fw-bold">{{ respondentName }}</div>
+                            <div v-if="respondentDetails !== '-'" class="small text-muted" v-html="respondentDetails">
                             </div>
                         </div>
                     </div>
@@ -129,24 +161,32 @@ const getAnswerDate = (questionId) => {
                             <i class="fa-solid fa-user-tag"></i>
                         </div>
                         <div>
-                            <div class="fw-semibold small text-muted">Peran</div>
-                            <div class="dropdown">
-                                <a class="dropdown-toggle text-dark fw-bold" href="#" data-bs-toggle="dropdown"
-                                    aria-expanded="false">
-                                    {{ activeRoleName }}
-                                </a>
-                                <div class="dropdown-menu">
-                                    <a v-for="role in userRoles" :key="role.id" class="dropdown-item"
-                                        @click.prevent="activeRoleId = role.id">
-                                        {{ role.name }}
+                            <div v-if="respondentType === 'internal'" class="fw-semibold small text-muted">Peran</div>
+                            <div v-if="respondentType === 'external'" class="fw-semibold small text-muted">Jenis
+                                Responden</div>
+                            <div v-if="respondentType === 'internal'">
+                                <div v-if="userRoles.length > 1" class="dropdown">
+                                    <a class="dropdown-toggle text-dark fw-bold" href="#" data-bs-toggle="dropdown"
+                                        aria-expanded="false">
+                                        {{ activeRoleName }}
                                     </a>
+                                    <div class="dropdown-menu">
+                                        <a v-for="role in userRoles" :key="role.id" class="dropdown-item"
+                                            @click.prevent="activeRoleId = role.id">
+                                            {{ role.name }}
+                                        </a>
+                                    </div>
                                 </div>
+                                <div v-else class="fw-bold">{{ activeRoleName }}</div>
                             </div>
-                            <div v-if="selectedUser?.student_detail?.study_program" class="small text-muted mt-1">
-                                Program Studi: {{ selectedUser.student_detail.study_program }}
+                            <div v-else class="fw-bold">{{ respondentTypeDisplay }}</div>
+                            <div v-if="respondentType === 'internal' && selectedRespondent?.student_detail?.study_program"
+                                class="small text-muted mt-1">
+                                Program Studi: {{ selectedRespondent.student_detail.study_program }}
                             </div>
-                            <div v-else-if="selectedUser?.lecturer_detail?.work_unit" class="small text-muted mt-1">
-                                Unit Kerja: {{ selectedUser.lecturer_detail.work_unit }}
+                            <div v-else-if="respondentType === 'internal' && selectedRespondent?.lecturer_detail?.work_unit"
+                                class="small text-muted mt-1">
+                                Unit Kerja: {{ selectedRespondent.lecturer_detail.work_unit }}
                             </div>
                         </div>
                     </div>
@@ -170,19 +210,20 @@ const getAnswerDate = (questionId) => {
                             <div class="fw-semibold mb-1">{{ question.question_text }}</div>
                             <small class="text-muted d-block mb-2">
                                 {{ getCategoryName(question) }} •
-                                <span v-if="getAnswerDate(question.id)">Dijawab pada {{ getAnswerDate(question.id) }}</span>
+                                <span v-if="getAnswerDate(question.id)">Dijawab pada {{ getAnswerDate(question.id)
+                                }}</span>
                             </small>
                             <div v-if="question.question_type === 'multiple_choice'">
                                 <div class="fw-bold"
                                     :class="getOptionText(getAnswerForQuestion(question.id)) ? 'text-primary' : 'text-danger'">
-                                    {{ getOptionText(getAnswerForQuestion(question.id)) || '**Jawaban tidak ditemukan**'
+                                    {{ getOptionText(getAnswerForQuestion(question.id)) || '*Jawaban tidak ditemukan*'
                                     }}
                                 </div>
                             </div>
                             <div v-else>
                                 <div class="fw-bold"
                                     :class="getAnswerForQuestion(question.id) ? 'text-primary' : 'text-danger'">
-                                    {{ getAnswerForQuestion(question.id) || '**Jawaban tidak ditemukan**' }}
+                                    {{ getAnswerForQuestion(question.id) || '*Jawaban tidak ditemukan*' }}
                                 </div>
                             </div>
                         </div>

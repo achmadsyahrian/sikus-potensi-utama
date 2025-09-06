@@ -1,8 +1,9 @@
 <script setup>
 import BaseButton from '@/Components/BaseButton.vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, useForm } from '@inertiajs/vue3';
 import QuestionnaireTargetForm from './QuestionnaireTargetForm.vue';
 import QuestionnaireBasicInfoForm from './QuestionnaireBasicInfoForm.vue';
+import QuestionnairePublicLinkForm from './QuestionnairePublicLinkForm.vue';
 
 const props = defineProps({
     form: Object,
@@ -26,6 +27,15 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['submit', 'editToggle']);
+
+const generateLinkForm = useForm({});
+
+const generatePublicLink = () => {
+    generateLinkForm.post(route('questionnaires.generatePublicLink', props.questionnaire.id), {
+        preserveScroll: true,
+        onSuccess: () => {},
+    });
+};
 </script>
 
 <template>
@@ -61,5 +71,15 @@ const emit = defineEmits(['submit', 'editToggle']);
             <QuestionnaireTargetForm :form="form" :roles="roles" :faculties="faculties" :programStudies="programStudies"
                 :is-disabled="isDisabled" :is-editing="isEditing" :is-create="isCreate" />
         </div>
+
+        <hr>
+
+        <!-- Form Link Publik -->
+        <QuestionnairePublicLinkForm
+            v-if="!isCreate"
+            :questionnaire="questionnaire"
+            :is-editing="isEditing"
+            @generate-public-link="generatePublicLink"
+        />
     </form>
 </template>

@@ -25,12 +25,14 @@ const props = defineProps({
 const page = usePage();
 
 const activeMenu = ref('basic');
-const selectedUserId = ref(null);
+const selectedRespondentId = ref(null);
+const selectedRespondentType = ref(null);
 
 watch(() => page.url, (newUrl) => {
     const url = new URL(newUrl, window.location.origin);
     activeMenu.value = url.searchParams.get('tab') || 'basic';
-    selectedUserId.value = url.searchParams.get('userId') || null;
+    selectedRespondentId.value = url.searchParams.get('userId') || null;
+    selectedRespondentType.value = url.searchParams.get('userType') || null;
 }, { immediate: true });
 
 // Computed property untuk mengecek apakah kuesioner sudah ada jawabannya
@@ -62,12 +64,15 @@ const update = () => {
     });
 };
 
-const showRespondentAnswers = (userId) => {
-    selectedUserId.value = userId;
+const showRespondentAnswers = ({ type, id }) => {
+    selectedRespondentId.value = id;
+    selectedRespondentType.value = type;
     activeMenu.value = 'respondent-answers';
 };
 
 const backToRespondents = () => {
+    selectedRespondentId.value = null;
+    selectedRespondentType.value = null;
     activeMenu.value = 'respondents';
 };
 </script>
@@ -120,10 +125,10 @@ const backToRespondents = () => {
                     </div>
                     <div v-else-if="activeMenu === 'respondents'">
                         <QuestionnaireRespondents :questionnaire="questionnaire" @show-answers="showRespondentAnswers"
-                            :respondents="respondents" />
+                            :respondents="respondents"/>
                     </div>
                     <div v-else-if="activeMenu === 'respondent-answers'">
-                        <RespondentAnswers :questionnaire="questionnaire" :userId="selectedUserId"
+                        <RespondentAnswers :questionnaire="questionnaire" :respondentId="selectedRespondentId" :respondentType="selectedRespondentType"
                             @back="backToRespondents" />
                     </div>
                 </div>

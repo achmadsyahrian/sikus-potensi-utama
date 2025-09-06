@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Inertia\Inertia;
+use Illuminate\Support\Str;
 
 class QuestionnaireController extends Controller
 {
@@ -79,6 +80,7 @@ class QuestionnaireController extends Controller
             'answers.user.lecturerDetail',
             'answers.user.roles',
             'answers.role',
+            'answers.respondentExternal',
         ]);
 
         $baseData = $this->getBaseViewData();
@@ -104,8 +106,6 @@ class QuestionnaireController extends Controller
         return redirect()->route('questionnaires.show', $questionnaire->id)->with('success', 'Kuesioner berhasil diperbarui!');
     }
 
-
-
     public function destroy(Questionnaire $questionnaire)
     {
         if (!auth()->user()->hasRole('superadmin') && $questionnaire->answers()->exists()) {
@@ -116,6 +116,24 @@ class QuestionnaireController extends Controller
 
         return redirect()->route('questionnaires.index')->with('success', 'Kuesioner berhasil dihapus!');
     }
+
+    public function generatePublicLink(Questionnaire $questionnaire)
+    {
+        if (!$questionnaire->is_active) {
+            return back()->with('error', 'Kuesioner harus aktif untuk dapat membuat tautan publik.');
+        }
+
+        if ($questionnaire->public_link_token) {
+            return back()->with('error', 'Tautan publik sudah ada.');
+        }
+
+        $token = Str::random(32);
+        $questionnaire->public_link_token = $token;
+        $questionnaire->save();
+
+        return back()->with('success', 'Tautan publik berhasil dibuat.');
+    }
+
 
     private function getBaseViewData()
     {
@@ -131,39 +149,69 @@ class QuestionnaireController extends Controller
 
     private function getPaginatedRespondents(Questionnaire $questionnaire)
     {
-        $respondentUserIds = $questionnaire->answers()->select('user_id')
-            ->distinct()
-            ->pluck('user_id');
-
-        $perPage = 50;
-        $currentPage = Paginator::resolveCurrentPage();
-
-        $paginatedUsers = User::whereIn('id', $respondentUserIds)
-            ->with(['studentDetail', 'lecturerDetail', 'roles'])
-            ->paginate($perPage, ['*'], 'page', $currentPage);
-
         $userAnswers = $questionnaire->answers()
-            ->whereIn('user_id', $paginatedUsers->pluck('id'))
-            ->with(['user', 'role'])
+            ->with(['user.roles', 'user.studentDetail', 'user.lecturerDetail', 'respondentExternal'])
             ->get();
 
-        $groupedRespondents = $paginatedUsers->map(function ($user) use ($userAnswers) {
-            $answers = $userAnswers->where('user_id', $user->id);
-            $roles = $answers->map->role->unique('id');
+        $allRespondents = collect();
 
-            return (object)[
-                'user' => $user,
-                'roles' => $roles,
-                'answers' => $answers,
-            ];
+        // Ambil responden internal yang unik
+        $userAnswers->whereNotNull('user_id')->unique('user_id')->each(function ($answer) use ($allRespondents) {
+            $user = $answer->user;
+            if ($user) {
+                $allRespondents->push((object)[
+                    'id' => $user->id,
+                    'type' => 'internal',
+                    'name' => $user->name,
+                    'roles' => $user->roles,
+                    'details' => $this->getIdentitas($user)
+                ]);
+            }
         });
 
+        // Ambil responden eksternal yang unik
+        $userAnswers->whereNotNull('respondent_external_id')->unique('respondent_external_id')->each(function ($answer) use ($allRespondents) {
+            $external = $answer->respondentExternal;
+            if ($external) {
+                $allRespondents->push((object)[
+                    'id' => $external->id,
+                    'type' => 'external',
+                    'name' => $external->name,
+                    'roles' => [(object)['name' => 'Eksternal']],
+                    'details' => $external->company_or_institution
+                ]);
+            }
+        });
+
+        // Terapkan paginasi manual pada koleksi gabungan
+        $perPage = 50;
+        $currentPage = Paginator::resolveCurrentPage();
+        $offset = ($currentPage - 1) * $perPage;
+        $paginatedItems = $allRespondents->slice($offset, $perPage)->values();
+
         return new LengthAwarePaginator(
-            $groupedRespondents,
-            $paginatedUsers->total(),
-            $paginatedUsers->perPage(),
-            $paginatedUsers->currentPage(),
+            $paginatedItems,
+            $allRespondents->count(),
+            $perPage,
+            $currentPage,
             ['path' => Paginator::resolveCurrentPath()]
         );
+    }
+
+    private function getIdentitas($user)
+    {
+        $rolesArray = $user->roles ? $user->roles->toArray() : [];
+        $isMahasiswa = collect($rolesArray)->some(fn($role) => $role['name'] === 'Mahasiswa');
+        $isDosen = collect($rolesArray)->some(fn($role) => $role['name'] === 'Dosen');
+
+        if ($isMahasiswa && $user->studentDetail) {
+            return $user->studentDetail->nim;
+        }
+
+        if ($isDosen && $user->lecturerDetail) {
+            return $user->lecturerDetail->nidn;
+        }
+
+        return '-';
     }
 }

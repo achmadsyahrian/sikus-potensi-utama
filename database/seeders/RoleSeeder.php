@@ -19,7 +19,7 @@ class RoleSeeder extends Seeder
             ['name' => 'Dosen', 'slug' => 'dosen'],
             ['name' => 'Pegawai', 'slug' => 'pegawai'],
             ['name' => 'Mahasiswa', 'slug' => 'mahasiswa'],
-            ['name' => 'Mitra', 'slug' => 'mitra'],
+            // ['name' => 'Mitra', 'slug' => 'mitra'],
         ];
 
         DB::table('roles')->insert($roles);

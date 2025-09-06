@@ -3,6 +3,7 @@
 use App\Http\Controllers\AcademicPeriodController;
 use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExternalQuestionnaireController;
 use App\Http\Controllers\FacultyController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProgramStudyController;
@@ -22,7 +23,7 @@ use Inertia\Inertia;
 Route::middleware('auth')->group(function () {
     Route::get('/role-selection', [RoleSelectionController::class, 'index'])->name('role-selection.index');
     Route::post('/role-selection', [RoleSelectionController::class, 'store'])->name('role-selection.store');
-    
+
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/about-us', function () {
@@ -45,6 +46,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/questionnaires/{questionnaire}', [QuestionnaireController::class, 'show'])->name('questionnaires.show');
         Route::put('/questionnaires/{questionnaire}', [QuestionnaireController::class, 'update'])->name('questionnaires.update');
         Route::delete('/questionnaires/{questionnaire}', [QuestionnaireController::class, 'destroy'])->name('questionnaires.destroy');
+
+        Route::post('/questionnaires/{questionnaire}/generate-public-link', [QuestionnaireController::class, 'generatePublicLink'])
+            ->name('questionnaires.generatePublicLink');
+
 
         // =========== Kategori Kuesioner ===========
         Route::post('/question-categories', [QuestionCategoryController::class, 'store'])->name('question-categories.store');
@@ -78,15 +83,19 @@ Route::middleware('auth')->group(function () {
         Route::post('/reset-password/{user}', [UserController::class, 'resetPassword'])->name('users.reset-password');
     });
 
-    Route::middleware('role:mahasiswa,dosen,mitra,pegawai')->group(function () {
+    Route::middleware('role:mahasiswa,dosen,pegawai')->group(function () {
         // =========== List Kuesioner ===========
         Route::get('/questionnaires-list', [AnswerController::class, 'index'])->name('answers.index');
-        
+
         // =========== Jawaban Kuesioner ===========
         Route::get('/questionnaires/{questionnaire}/answers', [AnswerController::class, 'show'])->name('answers.show');
         Route::post('/questionnaires/{questionnaire}/answers', [AnswerController::class, 'store'])->name('answers.store');
         Route::get('/questionnaires/{questionnaire}/submitted-answers', [AnswerController::class, 'submitted'])->name('answers.submitted');
     });
+
 });
+
+Route::get('/questionnaires/public/{token}', [ExternalQuestionnaireController::class, 'show'])->name('questionnaires.public.show');
+Route::post('/answers/store/external/{questionnaire}', [AnswerController::class, 'storeExternal'])->name('answers.store.external');
 
 require __DIR__ . '/auth.php';

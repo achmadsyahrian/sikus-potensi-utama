@@ -6,6 +6,7 @@ use App\Models\Answer;
 use App\Models\Faculty;
 use App\Models\ProgramStudy;
 use App\Models\Questionnaire;
+use App\Models\RespondentExternal;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -195,5 +196,44 @@ class AnswerController extends Controller
             'questionnaire' => $questionnaire->load(['categories.questions.category', 'options']),
             'submittedAnswers' => $submittedAnswers,
         ]);
+    }
+
+    public function storeExternal(Request $request, Questionnaire $questionnaire)
+    {
+        // Validasi data input
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'company_or_institution' => 'required|string|max:255',
+            'contact_number' => 'required|string|max:255',
+            'answers' => 'required|array',
+            'answers.*.question_id' => 'required|exists:questions,id',
+            'answers.*.answer_value' => 'nullable',
+        ]);
+
+        DB::transaction(function () use ($validatedData, $questionnaire) {
+            $respondentExternal = RespondentExternal::create([
+                'questionnaire_id' => $questionnaire->id,
+                'name' => $validatedData['name'],
+                'company_or_institution' => $validatedData['company_or_institution'],
+                'contact_number' => $validatedData['contact_number'],
+            ]);
+
+            // 2. Simpan jawaban kuesioner
+            foreach ($validatedData['answers'] as $answerData) {
+                if (isset($answerData['answer_value']) && !is_null($answerData['answer_value']) && $answerData['answer_value'] !== '') {
+                    Answer::create([
+                        'questionnaire_id' => $questionnaire->id,
+                        'question_id' => $answerData['question_id'],
+                        'answer_value' => $answerData['answer_value'],
+                        'user_id' => null, 
+                        'role_id' => null,
+                        'respondent_external_id' => $respondentExternal->id,
+                    ]);
+                }
+            }
+        });
+
+        // Redirect atau berikan respons sukses
+        return redirect()->back()->with('success', 'Terima kasih, kuesioner berhasil dikirim!');
     }
 }

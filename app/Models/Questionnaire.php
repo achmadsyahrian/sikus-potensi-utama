@@ -19,6 +19,7 @@ class Questionnaire extends Model
         'is_active',
         'start_date',
         'end_date',
+        'public_link_token',
     ];
 
     protected $with = ['academicPeriod', 'targets', 'categories', 'options', 'questions', 'answers'];

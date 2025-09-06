@@ -43,7 +43,7 @@ class UserController extends Controller
 
     public function create()
     {
-        $rolesToManage = ['superadmin', 'admin', 'mitra'];
+        $rolesToManage = ['superadmin', 'admin'];
         $roles = Role::whereIn('slug', $rolesToManage)->get();
 
         return Inertia::render('Users/Create', [
@@ -67,7 +67,7 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $user->load('roles');
-        $rolesToManage = ['superadmin', 'admin', 'mitra'];
+        $rolesToManage = ['superadmin', 'admin'];
         $roles = Role::whereIn('slug', $rolesToManage)->get();
 
         return Inertia::render('Users/Edit', [

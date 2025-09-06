@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { defineProps, defineEmits } from 'vue';
 import BaseButton from '@/Components/BaseButton.vue';
 import QuestionnaireInfoCard from './QuestionnaireInfoCard.vue';
@@ -11,17 +11,14 @@ const props = defineProps({
     respondents: Object,
 });
 
-// Definisikan event yang akan dikirim ke parent
 const emit = defineEmits(['show-answers']);
 
-// Computed property untuk mengelompokkan jawaban per user
+const selectedRole = ref('all');
 
-// Emit event dengan userId saat tombol diklik
-const showRespondentAnswers = (userId) => {
-    emit('show-answers', userId);
+const showRespondentAnswers = (type, id) => {
+    emit('show-answers', { type, id });
 };
 
-// Fungsi untuk mendapatkan warna badge berdasarkan nama peran
 const getRoleBadgeColor = (roleName) => {
     switch (roleName) {
         case 'Dosen':
@@ -30,6 +27,8 @@ const getRoleBadgeColor = (roleName) => {
             return 'bg-green-lt';
         case 'Mahasiswa':
             return 'bg-yellow-lt';
+        case 'Eksternal':
+            return 'bg-purple-lt';
         default:
             return 'bg-gray-lt';
     }
@@ -37,22 +36,41 @@ const getRoleBadgeColor = (roleName) => {
 
 const columns = [
     { key: 'index', label: 'No.', class: 'fw-bold text-dark w-1' },
-    { key: 'user.name', label: 'Nama Responden', class: 'fw-bold text-dark' },
+    { key: 'name', label: 'Nama Responden', class: 'fw-bold text-dark' },
     { key: 'roles', label: 'Peran', class: 'fw-bold text-dark' },
-    { key: 'identitas', label: 'NIM/NIDN', class: 'fw-bold text-dark' },
+    { key: 'details', label: 'Identitas / Perusahaan', class: 'fw-bold text-dark' },
+    // { key: 'actions', label: 'Aksi', class: 'text-center fw-bold text-dark' }
 ];
 
-const tableData = computed(() => {
-    return props.respondents;
+const availableRoles = computed(() => {
+    const rolesSet = new Set();
+    rolesSet.add('Semua');
+    props.respondents.data.forEach(item => {
+        item.roles.forEach(role => rolesSet.add(role.name));
+    });
+    return Array.from(rolesSet);
 });
 
-// Tambahkan computed property baru untuk mendapatkan identitas
+const tableData = computed(() => {
+    const filteredData = props.respondents.data.filter(item => {
+        if (selectedRole.value === 'all' || selectedRole.value === 'Semua') {
+            return true;
+        }
+        return item.roles.some(role => role.name === selectedRole.value);
+    });
+
+    return {
+        ...props.respondents,
+        data: filteredData,
+        total: filteredData.length,
+    };
+});
+
 const getIdentitas = (item) => {
-    if (!item || !item.user) return '-';
+    if (!item.user) return '-';
 
-    const rolesArray = Array.isArray(item.roles) ? item.roles : Object.values(item.roles);
+    const rolesArray = item.user.roles ? (Array.isArray(item.user.roles) ? item.user.roles : Object.values(item.user.roles)) : [];
     const isMahasiswa = rolesArray.some(role => role.name === 'Mahasiswa');
-
     const isDosen = rolesArray.some(role => role.name === 'Dosen');
 
     if (isMahasiswa) {
@@ -80,6 +98,18 @@ const getIdentitas = (item) => {
             </span>
         </div>
 
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <button :class="['btn', 'btn-sm', selectedRole === 'all' ? 'btn-primary' : 'btn-outline-primary']"
+                @click="selectedRole = 'all'">
+                Semua
+            </button>
+            <button v-for="role in availableRoles.filter(r => r !== 'Semua')" :key="role"
+                :class="['btn', 'btn-sm', selectedRole === role ? 'btn-primary' : 'btn-outline-primary']"
+                @click="selectedRole = role">
+                {{ role }}
+            </button>
+        </div>
+
         <div class="card">
             <DataTable :data="tableData" :columns="columns">
                 <template #cell(index)="{ item, index }">
@@ -91,13 +121,10 @@ const getIdentitas = (item) => {
                         {{ role.name }}
                     </span>
                 </template>
-                <template #cell(identitas)="{ item }">
-                    {{ getIdentitas(item) }}
-                </template>
                 <template #cell(actions)="{ item }">
                     <BaseTooltip title="Lihat Jawaban" data-bs-toggle="tooltip" data-bs-placement="top">
                         <BaseButton type="button" variant="primary" class="btn-icon" outline
-                            @click="showRespondentAnswers(item.user.id)">
+                            @click="showRespondentAnswers(item.type, item.id)">
                             <i class="fa-solid fa-eye"></i>
                         </BaseButton>
                     </BaseTooltip>

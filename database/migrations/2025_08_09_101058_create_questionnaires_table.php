@@ -19,6 +19,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(false);
             $table->timestamp('start_date')->nullable();
             $table->timestamp('end_date')->nullable();
+            $table->string('public_link_token')->nullable()->unique(); // external respondent
             $table->timestamps();
         });
     }

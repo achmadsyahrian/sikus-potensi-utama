@@ -20,7 +20,7 @@ const hasRole = (roleName) => {
 
 const isSuperadmin = computed(() => hasRole('superadmin'));
 const isAdmin = computed(() => hasRole('admin'));
-const isUser = computed(() => ['dosen', 'pegawai', 'mahasiswa', 'mitra'].includes(activeRole.value?.slug));
+const isUser = computed(() => ['dosen', 'pegawai', 'mahasiswa'].includes(activeRole.value?.slug));
 </script>
 
 <template>
