@@ -24,7 +24,7 @@ class SyncSevimaProgramStudies extends Command
     public function handle()
     {
         $this->info("Starting Sevima Program Studies synchronization...");
-        $sevimaResponse = $this->programStudyService->fetchProgramStudies();
+        $sevimaResponse = $this->programStudyService->fetchProgramStudies(['o-id' => 'asc']);
 
         if (empty($sevimaResponse) || empty($sevimaResponse['data'])) {
             $this->warn('No data found from Sevima API. Aborting sync.');

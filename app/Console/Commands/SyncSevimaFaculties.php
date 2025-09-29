@@ -24,7 +24,7 @@ class SyncSevimaFaculties extends Command
     public function handle()
     {
         $this->info("Starting Sevima Faculties synchronization...");
-        $sevimaResponse = $this->facultyService->fetchFaculties();
+        $sevimaResponse = $this->facultyService->fetchFaculties(['o-id' => 'asc']);
 
         if (empty($sevimaResponse) || empty($sevimaResponse['data'])) {
             $this->warn('No data found from Sevima API. Aborting sync.');

@@ -29,9 +29,9 @@ class AnswerController extends Controller
         ];
 
         // Kalau Mahasiswa → tambahkan faculty & program_study
-        if ($activeRole->name === 'Mahasiswa' && $user->studentDetails) {
-            $studentDetails = $user->studentDetails;
-            $programStudy = ProgramStudy::where('program_study_code', $studentDetails->program_study_code)->first();
+        if ($activeRole->name === 'Mahasiswa' && $user->studentDetail) {
+            $studentDetail = $user->studentDetail;
+            $programStudy = ProgramStudy::where('program_study_code', $studentDetail->program_study_code)->first();
             $faculty = Faculty::where('faculty_code', $programStudy->faculty_code)->first();
 
             if ($programStudy) {

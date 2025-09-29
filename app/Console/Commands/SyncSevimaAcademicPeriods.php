@@ -31,7 +31,7 @@ class SyncSevimaAcademicPeriods extends Command
         $totalSevimaRecords = 0;
         do {
             $this->info("Fetching page {$currentPage}...");
-            $sevimaResponse = $this->academicPeriodService->fetchAcademicPeriods(['page' => $currentPage]);
+            $sevimaResponse = $this->academicPeriodService->fetchAcademicPeriods(['page' => $currentPage, 'o-id' => 'asc']);
             
             if (empty($sevimaResponse) || empty($sevimaResponse['data'])) {
                 $this->warn('No data found from Sevima API for this page. Aborting sync.');
