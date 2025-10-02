@@ -30,6 +30,7 @@ class AuthController extends Controller
             'remember' => ['nullable', 'boolean']
         ]);
 
+        // Percobaan Login Pertama: Coba login ke database lokal
         if (Auth::attempt($request->only('email', 'password'), $request->remember)) {
             $request->session()->regenerate();
             $user = Auth::user();
@@ -41,9 +42,10 @@ class AuthController extends Controller
 
         try {
             $sevimaData = SevimaAuthService::attemptLogin($credentials['email'], $credentials['password']);
+
             if ($sevimaData) {
                 $sevimaUserData = $sevimaData['attributes'];
-                $sevimaUserId = $sevimaUserData['user_id'];
+                $sevimaApiUserId = $sevimaUserData['user_id'];
                 $sevimaRoles = $sevimaUserData['role'];
 
                 if (empty($sevimaUserData['email']) || empty($sevimaUserData['nama'])) {
@@ -52,15 +54,30 @@ class AuthController extends Controller
                     ]);
                 }
 
-                $user = User::firstOrCreate(
-                    ['sevima_user_id' => $sevimaUserId],
-                    [
+                $user = null;
+                $isMahasiswa = collect($sevimaRoles)->contains('id_role', 'mhs');
+
+                if ($isMahasiswa) {
+                    $studentLoginData = collect($sevimaRoles)->where('id_role', 'mhs')->first();
+                    $nim = $studentLoginData['nim'];
+                    $user = User::where('sevima_user_id', $nim)->first();
+                }
+
+                if (!$user) {
+                    $user = User::where('sevima_user_id', $sevimaApiUserId)->first();
+                }
+
+                if (!$user) {
+                    $identifier = $isMahasiswa ? $nim : $sevimaApiUserId;
+
+                    $user = User::create([
                         'name' => Str::title($sevimaUserData['nama']),
                         'email' => $sevimaUserData['email'],
+                        'sevima_user_id' => $identifier,
                         'auth_provider' => 'sevima',
                         'password' => null,
-                    ]
-                );
+                    ]);
+                }
 
                 $isDosen = collect($sevimaRoles)->contains('id_role', 'dosen');
                 if ($isDosen) {
@@ -113,6 +130,7 @@ class AuthController extends Controller
             'email' => 'Kredensial yang diberikan tidak cocok dengan data kami.'
         ]);
     }
+
 
 
     public function destroy(Request $request)

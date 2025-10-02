@@ -13,5 +13,6 @@ class StudentDetail extends Model
         'study_program',
         'phone_number',
         'program_study_code',
+        'synced_at',
     ];
 }
