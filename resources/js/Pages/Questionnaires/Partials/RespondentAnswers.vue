@@ -1,235 +1,271 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { defineProps, defineEmits } from 'vue';
-import BaseButton from '@/Components/BaseButton.vue';
 import QuestionnaireInfoCard from './QuestionnaireInfoCard.vue';
+import BaseButton from '@/Components/BaseButton.vue';
 
 const props = defineProps({
     questionnaire: Object,
-    respondentType: String,
-    respondentId: Number,
+    respondentType: String, // 'internal' | 'external'
+    respondentId: Number,   // user_id OR respondent_external_id
 });
 
 const emit = defineEmits(['back']);
 const activeRoleId = ref(null);
+const questionSearch = ref('');
 
+// 1. Helper: Cari Data Responden (User / External)
 const selectedRespondent = computed(() => {
     if (props.respondentType === 'internal') {
-        const answer = props.questionnaire.answers.find(a => a.user_id === props.respondentId);
+        const answer = props.questionnaire.answers.find(a => a.user_id === Number(props.respondentId));
         return answer ? answer.user : null;
-    } else if (props.respondentType === 'external') {
-        const answer = props.questionnaire.answers.find(a => a.respondent_external_id === props.respondentId);
+    } else {
+        const answer = props.questionnaire.answers.find(a => a.respondent_external_id === Number(props.respondentId));
         return answer ? answer.respondent_external : null;
     }
-    return null;
 });
 
+// 2. Helper: List Role Unik User di Kuesioner Ini
 const userRoles = computed(() => {
-    if (props.respondentType !== 'internal') return [];
+    if (props.respondentType === 'internal') {
+        // Ambil semua jawaban user ini
+        const answers = props.questionnaire.answers.filter(a => a.user_id === Number(props.respondentId));
 
-    const roles = props.questionnaire.answers
-        .filter(answer => answer.user_id === props.respondentId)
-        .map(answer => answer.role);
+        // Map untuk menyaring role yang unik saja
+        const roleMap = new Map();
+        answers.forEach(a => {
+            if (a.role) {
+                // Key = ID Role, Value = Object Role
+                roleMap.set(a.role.id, { id: a.role.id, name: a.role.name });
+            }
+        });
 
-    const uniqueRoles = Array.from(new Set(roles.map(r => r.id)))
-        .map(id => roles.find(r => r.id === id));
+        // Kembalikan array role unik
+        return Array.from(roleMap.values());
+    } else {
+        // Jika Eksternal, ambil role dari tabel respondent_external
+        const ext = selectedRespondent.value;
+        if (!ext) return [{ id: 'external', name: 'Eksternal' }];
 
-    return uniqueRoles.filter(role => role !== null);
+        let roleName = 'Eksternal';
+        if (ext.role === 'alumni') roleName = 'Alumni';
+        else if (ext.role === 'mitra') roleName = 'Mitra Kerjasama';
+        else if (ext.role === 'pengguna_lulusan') roleName = 'Pengguna Lulusan';
+
+        return [{ id: 'external', name: roleName }];
+    }
 });
 
-watch(() => props.respondentId, () => {
-    if (props.respondentType === 'internal' && userRoles.value.length > 0) {
-        activeRoleId.value = userRoles.value[0].id;
+// 3. Watcher Penting: Set Default Active Role saat User Berubah
+watch(userRoles, (newRoles) => {
+    if (newRoles && newRoles.length > 0) {
+        // Cek apakah activeRoleId yang sekarang masih valid di list role baru?
+        const currentRoleIsValid = newRoles.find(r => r.id === activeRoleId.value);
+
+        // Jika tidak valid (atau null), set ke role pertama
+        if (!currentRoleIsValid) {
+            activeRoleId.value = newRoles[0].id;
+        }
     } else {
         activeRoleId.value = null;
     }
-}, { immediate: true });
+}, { immediate: true, deep: true });
 
+// 4. Filter Pertanyaan (Search)
+const filteredQuestions = computed(() => {
+    const questions = props.questionnaire.questions || [];
+    if (!questionSearch.value) return questions;
 
+    const query = questionSearch.value.toLowerCase();
+    return questions.filter(q =>
+        q.question_text.toLowerCase().includes(query) ||
+        (q.category?.name || '').toLowerCase().includes(query)
+    );
+});
+
+// 5. Filter Jawaban Berdasarkan Responden DAN Role Aktif
 const respondentAnswers = computed(() => {
     if (props.respondentType === 'internal') {
         if (!activeRoleId.value) return [];
+        // Filter ganda: User ID & Role ID
         return props.questionnaire.answers.filter(a =>
-            a.user_id === props.respondentId && a.role_id === activeRoleId.value
+            a.user_id === Number(props.respondentId) &&
+            a.role_id === activeRoleId.value
         );
-    } else if (props.respondentType === 'external') {
-        return props.questionnaire.answers.filter(a => a.respondent_external_id === props.respondentId);
+    } else {
+        return props.questionnaire.answers.filter(a =>
+            a.respondent_external_id === Number(props.respondentId)
+        );
     }
-    return [];
 });
 
-const respondentName = computed(() => selectedRespondent.value?.name || '*Nama tidak ditemukan*');
+// UI Helpers
+const respondentName = computed(() => selectedRespondent.value?.name || 'Responden Tidak Ditemukan');
 
 const respondentDetails = computed(() => {
-    if (props.respondentType === 'internal' && selectedRespondent.value) {
-        if (selectedRespondent.value.student_detail) {
-            return `NIM: ${selectedRespondent.value.student_detail?.nim}`;
-        }
-        if (selectedRespondent.value.lecturer_detail) {
-            return `NIDN: ${selectedRespondent.value.lecturer_detail?.nidn}`;
-        }
-    } else if (props.respondentType === 'external' && selectedRespondent.value) {
-        return `Perusahaan / PT: ${selectedRespondent.value.company_or_institution} <br>Kontak: ${selectedRespondent.value.contact_number}`;
-    }
-    return '-';
-});
+    const data = selectedRespondent.value;
+    if (!data) return '-';
 
-const activeRoleName = computed(() => {
-    const role = userRoles.value.find(r => r.id === activeRoleId.value);
-    return role ? role.name : 'Peran tidak ditemukan';
-});
-
-const respondentTypeDisplay = computed(() => {
     if (props.respondentType === 'internal') {
-        const roles = respondentAnswers.value.map(a => a.user.roles).flat().map(r => r.name);
-        return Array.from(new Set(roles)).join(', ');
+        let details = `<i class="fa-solid fa-envelope me-1"></i> ${data.email}`;
+        if (data.student_detail) details += `<br><i class="fa-solid fa-id-card me-1"></i> NIM: <strong>${data.student_detail.nim}</strong>`;
+        if (data.lecturer_detail) details += `<br><i class="fa-solid fa-id-card me-1"></i> NIDN: <strong>${data.lecturer_detail.nidn}</strong>`;
+        return details;
+    } else {
+        const instansi = data.role === 'alumni' ? 'Lulusan UPU' : (data.company_or_institution || '-');
+        return `
+            <div><i class="fa-solid fa-building me-1"></i> ${instansi}</div>
+            <div><i class="fa-solid fa-phone me-1"></i> ${data.contact_number}</div>
+        `;
     }
-    return 'Eksternal';
 });
-
-const allQuestions = computed(() => props.questionnaire.questions || []);
-
-const getAnswerObjectForQuestion = (questionId) => {
-    return respondentAnswers.value.find(answer => answer.question_id === questionId);
-};
 
 const getAnswerForQuestion = (questionId) => {
-    const answer = getAnswerObjectForQuestion(questionId);
-    return answer?.answer_value || null;
+    return respondentAnswers.value.find(a => a.question_id === questionId);
 };
 
 const getOptionText = (optionValue) => {
     const option = props.questionnaire.options.find(o => o.option_value == optionValue);
-    return option ? option.option_text : null;
+    return option ? option.option_text : `Nilai: ${optionValue}`;
 };
 
-const getCategoryName = (question) => {
-    return question.category ? question.category.name : 'Tanpa Kategori';
-};
-
-const getAnswerDate = (questionId) => {
-    const answer = getAnswerObjectForQuestion(questionId);
-    if (answer && answer.created_at) {
-        return new Date(answer.created_at).toLocaleDateString('id-ID', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-        });
-    }
-    return null;
+const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('id-ID', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
 };
 </script>
 
 <template>
     <div class="card-body">
-        <QuestionnaireInfoCard :questionnaire="questionnaire" />
 
-        <div class="d-flex align-items-center justify-content-between pt-3 pb-4 border-bottom">
+        <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
             <div>
-                <h3 class="fw-bold mb-1">
-                    <i class="fa-solid fa-file-alt text-primary me-2"></i> Jawaban Responden
+                <h3 class="card-title mb-1">
+                    <i class="fa-solid fa-file-contract me-2 text-primary"></i> Review Jawaban
                 </h3>
-                <p class="text-muted mb-0">Detail jawaban kuesioner dari responden ini.</p>
+                <div class="text-muted small">Detail respons per individu</div>
             </div>
-            <BaseButton type="button" variant="secondary" outline @click="emit('back')">
+            <BaseButton type="button" variant="secondary" outline @click="emit('back')" size="sm">
                 <i class="fa-solid fa-arrow-left me-2"></i> Kembali
             </BaseButton>
         </div>
 
-        <div class="row g-3 mt-4">
-            <div class="col-md-6">
-                <div class="card border-0 shadow-sm h-100">
+        <div class="row g-3 mb-4">
+            <div class="col-md-7">
+                <div class="card bg-primary-lt border-0 shadow-sm h-100">
                     <div class="card-body d-flex align-items-center">
-                        <div class="icon-shape bg-primary-lt text-primary rounded-circle me-3 d-flex align-items-center justify-content-center"
-                            style="width:45px;height:45px;">
-                            <i class="fa-solid fa-user"></i>
-                        </div>
+                        <span class="avatar avatar-lg rounded-circle bg-white text-primary fs-2 me-3 shadow-sm border border-primary-lt">
+                            {{ respondentName.charAt(0).toUpperCase() }}
+                        </span>
                         <div>
-                            <div class="fw-semibold small text-muted">Nama Responden</div>
-                            <div class="fw-bold">{{ respondentName }}</div>
-                            <div v-if="respondentDetails !== '-'" class="small text-muted" v-html="respondentDetails">
-                            </div>
+                            <h2 class="card-title mb-1 text-primary">{{ respondentName }}</h2>
+                            <div class="text-muted small lh-sm" v-html="respondentDetails"></div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="icon-shape bg-success-lt text-success rounded-circle me-3 d-flex align-items-center justify-content-center"
-                            style="width:45px;height:45px;">
-                            <i class="fa-solid fa-user-tag"></i>
+
+            <div class="col-md-5">
+                <div class="card border h-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="text-uppercase text-muted small fw-bold mb-2">
+                            Peran Saat Mengisi
                         </div>
-                        <div>
-                            <div v-if="respondentType === 'internal'" class="fw-semibold small text-muted">Peran</div>
-                            <div v-if="respondentType === 'external'" class="fw-semibold small text-muted">Jenis
-                                Responden</div>
-                            <div v-if="respondentType === 'internal'">
-                                <div v-if="userRoles.length > 1" class="dropdown">
-                                    <a class="dropdown-toggle text-dark fw-bold" href="#" data-bs-toggle="dropdown"
-                                        aria-expanded="false">
-                                        {{ activeRoleName }}
-                                    </a>
-                                    <div class="dropdown-menu">
-                                        <a v-for="role in userRoles" :key="role.id" class="dropdown-item"
-                                            @click.prevent="activeRoleId = role.id">
-                                            {{ role.name }}
-                                        </a>
-                                    </div>
-                                </div>
-                                <div v-else class="fw-bold">{{ activeRoleName }}</div>
+
+                        <div v-if="respondentType === 'internal' && userRoles.length > 1">
+                            <label class="form-label mb-1 small text-dark">Pilih Role Jawaban:</label>
+                            <select v-model="activeRoleId" class="form-select form-select-sm border-primary text-primary fw-bold shadow-none">
+                                <option v-for="role in userRoles" :key="role.id" :value="role.id">
+                                    {{ role.name }} (Lihat Jawaban)
+                                </option>
+                            </select>
+                            <div class="form-text text-muted mt-1" style="font-size: 11px;">
+                                User ini menjawab kuesioner sebagai <strong>{{ userRoles.length }} peran berbeda</strong>.
                             </div>
-                            <div v-else class="fw-bold">{{ respondentTypeDisplay }}</div>
-                            <div v-if="respondentType === 'internal' && selectedRespondent?.student_detail?.study_program"
-                                class="small text-muted mt-1">
-                                Program Studi: {{ selectedRespondent.student_detail.study_program }}
-                            </div>
-                            <div v-else-if="respondentType === 'internal' && selectedRespondent?.lecturer_detail?.work_unit"
-                                class="small text-muted mt-1">
-                                Unit Kerja: {{ selectedRespondent.lecturer_detail.work_unit }}
-                            </div>
+                        </div>
+
+                        <div v-else>
+                            <span class="badge bg-blue-lt fs-3 p-2 w-100 justify-content-center">
+                                <i class="fa-solid fa-user-tag me-2"></i>
+                                {{ userRoles[0]?.name || 'Tidak Ada Role' }}
+                            </span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="mt-4">
-            <h5 class="fw-bold mb-3">Jawaban Kuesioner</h5>
-            <div v-for="(question, index) in allQuestions" :key="question.id" class="card border-0 shadow-sm mb-3">
+        <div class="d-flex align-items-center justify-content-between mb-3 bg-light p-2 rounded border">
+            <div class="fw-bold px-2">
+                <i class="fa-solid fa-list-ol me-2"></i> Daftar Pertanyaan
+            </div>
+            <div class="w-auto">
+                 <div class="input-icon">
+                    <span class="input-icon-addon"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" v-model="questionSearch" class="form-control form-control-sm" placeholder="Cari isi pertanyaan..." style="width: 250px;">
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-3">
+            <div v-for="(question, index) in filteredQuestions" :key="question.id" class="card card-sm border shadow-sm">
                 <div class="card-body">
-                    <div class="d-flex align-items-start">
-                        <div class="me-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                            style="width: 32px; height: 32px;">
-                            <div class="badge bg-primary rounded-circle w-100 h-100 d-flex align-items-center justify-content-center"
-                                style="font-size: 0.8rem;">
-                                {{ index + 1 }}
-                            </div>
+                    <div class="d-flex">
+                        <div class="me-3">
+                            <span class="badge bg-secondary-lt">{{ index + 1 }}</span>
                         </div>
                         <div class="flex-grow-1">
-                            <div class="fw-semibold mb-1">{{ question.question_text }}</div>
-                            <small class="text-muted d-block mb-2">
-                                {{ getCategoryName(question) }} •
-                                <span v-if="getAnswerDate(question.id)">Dijawab pada {{ getAnswerDate(question.id)
-                                }}</span>
-                            </small>
-                            <div v-if="question.question_type === 'multiple_choice'">
-                                <div class="fw-bold"
-                                    :class="getOptionText(getAnswerForQuestion(question.id)) ? 'text-primary' : 'text-danger'">
-                                    {{ getOptionText(getAnswerForQuestion(question.id)) || '*Jawaban tidak ditemukan*'
-                                    }}
-                                </div>
+                            <div class="fw-bold text-dark mb-2">{{ question.question_text }}</div>
+
+                            <div class="bg-light p-3 rounded-2 border border-dashed position-relative">
+                                <template v-if="getAnswerForQuestion(question.id)">
+
+                                    <div v-if="question.question_type === 'multiple_choice'">
+                                        <div class="d-flex align-items-center text-primary fw-bold">
+                                            <i class="fa-regular fa-circle-check me-2 fs-3"></i>
+                                            {{ getOptionText(getAnswerForQuestion(question.id).answer_value) }}
+                                        </div>
+                                    </div>
+
+                                    <div v-else>
+                                        <div class="text-dark fst-italic">
+                                            "{{ getAnswerForQuestion(question.id).answer_value }}"
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-2 text-end border-top pt-2">
+                                        <span class="badge bg-green-lt" style="font-size: 9px;">
+                                            <i class="fa-regular fa-clock me-1"></i>
+                                            {{ formatDate(getAnswerForQuestion(question.id).created_at) }}
+                                        </span>
+                                    </div>
+                                </template>
+
+                                <template v-else>
+                                    <div class="text-danger small d-flex align-items-center">
+                                        <i class="fa-solid fa-circle-xmark me-2"></i>
+                                        <em>Tidak dijawab pada sesi role ini.</em>
+                                    </div>
+                                </template>
                             </div>
-                            <div v-else>
-                                <div class="fw-bold"
-                                    :class="getAnswerForQuestion(question.id) ? 'text-primary' : 'text-danger'">
-                                    {{ getAnswerForQuestion(question.id) || '*Jawaban tidak ditemukan*' }}
-                                </div>
-                            </div>
+
                         </div>
                     </div>
                 </div>
             </div>
+
+            <div v-if="filteredQuestions.length === 0" class="empty py-5">
+                <div class="empty-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+                <p class="empty-title">Tidak ditemukan</p>
+                <p class="empty-subtitle text-muted">Tidak ada pertanyaan yang cocok dengan pencarian Anda.</p>
+            </div>
         </div>
+
     </div>
 </template>
+
+<style scoped>
+.space-y-3 > * + * { margin-top: 1rem; }
+.bg-primary-lt { background-color: #eef6ff !important; color: #182433; }
+</style>

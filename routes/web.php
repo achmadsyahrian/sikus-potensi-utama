@@ -10,10 +10,10 @@ use App\Http\Controllers\ProgramStudyController;
 use App\Http\Controllers\QuestionCategoryController;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\QuestionnaireController;
-use App\Http\Controllers\QuestionnaireQuestionController;
 use App\Http\Controllers\QuestionOptionController;
 use App\Http\Controllers\RoleSelectionController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\SatisfactionCriteriaController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -37,7 +37,6 @@ Route::middleware('auth')->group(function () {
     // Termasuk role 'mahasiswa', 'dosen', 'pegawai', 'mitra'
     // Route::get('/answers', [AnswerController::class, 'index'])->name('answers.index');
 
-
     Route::middleware('role:admin,superadmin')->group(function () {
         // =========== Manajemen Kuesioner ===========
         Route::get('/questionnaires', [QuestionnaireController::class, 'index'])->name('questionnaires.index');
@@ -49,7 +48,6 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/questionnaires/{questionnaire}/generate-public-link', [QuestionnaireController::class, 'generatePublicLink'])
             ->name('questionnaires.generatePublicLink');
-
 
         // =========== Kategori Kuesioner ===========
         Route::post('/question-categories', [QuestionCategoryController::class, 'store'])->name('question-categories.store');
@@ -75,6 +73,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/program-studies', [ProgramStudyController::class, 'index'])->name('program-studies.index');
         Route::post('/program-studies/sync', [ProgramStudyController::class, 'sync'])->name('program-studies.sync');
+
+        Route::resource('satisfaction-criteria', SatisfactionCriteriaController::class)
+            ->names('satisfaction-criteria');
     });
 
     Route::middleware('role:superadmin')->group(function () {

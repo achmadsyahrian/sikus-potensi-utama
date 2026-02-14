@@ -31,7 +31,7 @@ const props = defineProps({
             <select id="question_type" v-model="form.question_type" class="form-select"
                 :class="{ 'is-invalid': form.errors.question_type }" required>
                 <option value="multiple_choice">Pilihan Ganda</option>
-                <option value="text">Teks Bebas</option>
+                <!-- <option value="text">Teks Bebas</option> -->
             </select>
             <div v-if="form.errors.question_type" class="invalid-feedback">{{ form.errors.question_type }}</div>
         </div>

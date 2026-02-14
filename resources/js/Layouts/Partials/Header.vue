@@ -198,6 +198,9 @@ const isUser = computed(() => ['dosen', 'pegawai', 'mahasiswa'].includes(activeR
                                         <Link class="dropdown-item" :href="route('program-studies.index')">
                                         Program Studi
                                         </Link>
+                                        <Link class="dropdown-item" :href="route('satisfaction-criteria.index')">
+                                        Kriteria Kepuasan
+                                        </Link>
                                     </div>
                                 </div>
                             </div>

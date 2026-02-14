@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 const props = defineProps({
     questionnaires: Array,
@@ -11,6 +11,7 @@ const props = defineProps({
 
 const page = usePage();
 const userName = page.props.auth.user.name;
+const chartInstance = ref(null);
 
 const activeRole = computed(() => {
     const activeRoleId = page.props.auth.activeRoleId;
@@ -20,161 +21,187 @@ const activeRole = computed(() => {
     return page.props.auth.user.roles[0];
 });
 
-onMounted(() => {
-    // Bar Chart Progres Pengisian Kuesioner
-    const completionData = [props.completedQuestionnairesCount, props.uncompletedQuestionnairesCount];
-    const completionLabels = ['Selesai', 'Belum Diisi'];
+const renderChart = () => {
+    const el = document.getElementById('chart-questionnaire-progress');
+    if (!el) return;
 
-    setTimeout(() => {
-        if (completionData.length > 0) {
-            window.ApexCharts && (new ApexCharts(document.getElementById('chart-questionnaire-progress'), {
-                chart: {
-                    type: 'bar',
-                    fontFamily: 'inherit',
-                    height: 250,
-                    parentHeightOffset: 0,
-                    toolbar: {
-                        show: false,
-                    },
-                    animations: {
-                        enabled: false
-                    },
-                },
-                plotOptions: {
-                    bar: {
-                        horizontal: false,
-                        columnWidth: '50%',
-                        endingShape: 'rounded'
-                    },
-                },
-                dataLabels: {
-                    enabled: false,
-                },
-                stroke: {
-                    show: true,
-                    width: 2,
-                    colors: ['transparent']
-                },
-                series: [{
-                    name: 'Jumlah Kuesioner',
-                    data: completionData
-                }],
-                xaxis: {
-                    categories: completionLabels,
-                },
-                yaxis: {
-                    title: {
-                        text: 'Jumlah'
-                    }
-                },
-                fill: {
-                    opacity: 1
-                },
-                tooltip: {
-                    y: {
-                        formatter: function (val) {
-                            return val + " kuesioner"
-                        }
-                    }
-                },
-                colors: [
-                    '#4F9C6E', // Selesai
-                    '#F03D51'  // Belum Diisi
-                ],
-                legend: {
-                    show: false,
-                },
-            })).render();
+    const options = {
+        chart: {
+            type: 'bar',
+            fontFamily: 'inherit',
+            height: 280,
+            toolbar: { show: false },
+            animations: { enabled: true },
+        },
+        plotOptions: {
+            bar: {
+                borderRadius: 4,
+                columnWidth: '45%',
+                distributed: true,
+            },
+        },
+        dataLabels: {
+            enabled: true,
+            style: { fontWeight: '600' }
+        },
+        series: [{
+            name: 'Jumlah',
+            data: [props.completedQuestionnairesCount, props.uncompletedQuestionnairesCount]
+        }],
+        xaxis: {
+            categories: ['Selesai', 'Belum Diisi'],
+            axisBorder: { show: false },
+        },
+        fill: { opacity: 1 },
+        colors: ['#2fb344', '#d63939'],
+        states: {
+            hover: {
+                filter: { type: 'darken', value: 0.1 }
+            }
+        },
+        legend: { show: false },
+        tooltip: {
+            theme: 'dark',
+            y: { formatter: (val) => `${val} Kuesioner` }
         }
-    }, 500);
+    };
+
+    if (chartInstance.value) chartInstance.value.destroy();
+    chartInstance.value = new ApexCharts(el, options);
+    chartInstance.value.render();
+};
+
+onMounted(() => {
+    if (props.questionnaires.length > 0) {
+        renderChart();
+    }
 });
 </script>
 
 <template>
-
     <Head title="Dashboard" />
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="page-title">Dashboard Pengguna</h2>
+            <div class="row align-items-center">
+                <div class="col">
+                    <div class="page-pretitle">Overview</div>
+                    <h2 class="page-title">Dashboard Pengguna</h2>
+                </div>
+            </div>
         </template>
 
         <div class="page-body">
             <div class="container-xl">
-                <div class="col-12 mb-3">
-                    <div class="card card-md">
-                        <div class="card-stamp card-stamp-lg">
-                            <div class="card-stamp-icon bg-primary">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    class="icon icon-tabler icons-tabler-outline icon-tabler-user-check">
-                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                    <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
-                                    <path d="M6 21v-2a4 4 0 0 1 4 -4h4" />
-                                    <path d="M15 19l2 2l4 -4" />
-                                </svg>
-                            </div>
+                <div class="card card-md mb-4 border-0 shadow-sm bg-primary-lt">
+                    <div class="card-status-start bg-primary"></div>
+                    <div class="card-stamp">
+                        <div class="card-stamp-icon bg-primary">
+                            <i class="fa-solid fa-user-check"></i>
                         </div>
-                        <div class="card-body">
-                            <div class="row align-items-center">
-                                <div class="col-11">
-                                    <h3 class="h1">Halo, {{ userName }}!</h3>
-                                    <p class="text-muted mb-2">
-                                        Selamat datang kembali di Siku — Sistem Kuesioner Universitas Potensi
-                                        Utama.
-                                    </p>
-                                    <p class="text-muted">
-                                        Anda saat ini beroperasi sebagai:
-                                        <span class="fw-bold" v-if="activeRole">{{ activeRole.name }}</span>
-                                        <span class="fw-bold" v-else>{{ page.props.auth.user.roles[0].name }}</span>
-                                    </p>
+                    </div>
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-12 col-md-8">
+                                <h1 class="text-primary">Halo, {{ userName }}!</h1>
+                                <p class="text-muted fs-3 mb-3">
+                                    Selamat datang di <strong>Siku</strong>. Kontribusi Anda sangat berharga bagi peningkatan mutu Universitas Potensi Utama.
+                                </p>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-blue-lt px-3 py-2">
+                                        <i class="fa-solid fa-briefcase me-1"></i>
+                                        Login Sebagai: {{ activeRole?.name }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Progres Pengisian Kuesioner (Bar Chart) -->
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h3 class="card-title">Progres Pengisian Kuesioner</h3>
-                    </div>
-                    <div class="card-body">
-                        <div v-if="props.questionnaires.length > 0" id="chart-questionnaire-progress"></div>
-                        <div v-else class="d-flex justify-content-center align-items-center" style="height: 250px;">
-                            <p class="text-muted">Tidak ada kuesioner yang tersedia untuk Anda.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Daftar Kuesioner -->
-                <div class="card mt-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h3 class="card-title mb-0">Daftar Kuesioner</h3>
-                    </div>
-                    <div v-if="questionnaires.length > 0" class="list-group list-group-flush">
-                        <div v-for="q in questionnaires" :key="q.id"
-                            class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="fw-bold">{{ q.name }}</div>
-                                <small class="text-muted">
-                                    Status: <span
-                                        :class="{ 'text-success': q.status === 'Diisi', 'text-danger': q.status === 'Belum Diisi' }">{{
-                                            q.status }}</span>
-                                </small>
+                <div class="row row-cards">
+                    <div class="col-lg-5">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-header">
+                                <h3 class="card-title">Statistik Partisipasi</h3>
                             </div>
-                            <Link :href="route(q.status === 'Diisi' ? 'answers.submitted' : 'answers.show', q)"
-                                class="btn btn-outline-primary btn-sm">
-                            {{ q.status === 'Diisi' ? 'Lihat Jawaban' : 'Isi Sekarang' }}
-                            </Link>
+                            <div class="card-body">
+                                <div v-if="props.questionnaires.length > 0" id="chart-questionnaire-progress"></div>
+                                <div v-else class="empty py-5">
+                                    <div class="empty-icon text-muted">
+                                        <i class="fa-solid fa-chart-pie fa-2x"></i>
+                                    </div>
+                                    <p class="empty-title">Belum ada data</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div v-else class="p-4 text-center text-muted">
-                        <p class="mb-0">Tidak ada kuesioner yang tersedia untuk Anda.</p>
+
+                    <div class="col-lg-7">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-header border-0 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="card-title">Daftar Kuesioner</h3>
+                                    <p class="card-subtitle text-muted small">Kelola dan isi kuesioner yang tersedia.</p>
+                                </div>
+                                <span class="badge bg-primary-lt text-primary">{{ questionnaires.length }} Total</span>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-vcenter card-table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Judul Kuesioner</th>
+                                            <th>Periode</th>
+                                            <th class="w-1">Status</th>
+                                            <th class="w-1">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody v-if="questionnaires.length > 0">
+                                        <tr v-for="q in questionnaires" :key="q.id">
+                                            <td>
+                                                <div class="fw-bold">{{ q.name }}</div>
+                                                <div class="text-muted small">
+                                                    <i class="fa-regular fa-calendar-check me-1"></i>
+                                                    Berakhir: {{ q.formatted_end_date || '-' }}
+                                                </div>
+                                            </td>
+                                            <td class="text-nowrap">
+                                                <span class="badge badge-outline text-azure px-2 py-1">
+                                                    {{ q.academic_period?.name || '-' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span :class="q.status === 'Diisi' ? 'badge bg-success-lt text-success' : 'badge bg-danger-lt text-danger'">
+                                                    {{ q.status }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <Link
+                                                    :href="route(q.status === 'Diisi' ? 'answers.submitted' : 'answers.show', q)"
+                                                    class="btn btn-sm btn-white px-3 shadow-sm"
+                                                >
+                                                    {{ q.status === 'Diisi' ? 'Detail' : 'Isi' }}
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    <tbody v-else>
+                                        <tr>
+                                            <td colspan="4" class="text-center py-4 text-muted small">
+                                                Tidak ada kuesioner yang tersedia untuk Anda saat ini.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.bg-primary-lt { background-color: #f0f7ff !important; }
+.card-status-start { width: 4px; }
+</style>

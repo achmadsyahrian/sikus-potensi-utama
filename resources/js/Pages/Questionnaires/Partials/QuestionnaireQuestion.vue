@@ -74,16 +74,35 @@ const confirmDelete = (question) => {
     questionToDelete.value = question;
 };
 
+const closeModal = (modalId) => {
+    const modalEl = document.getElementById(modalId);
+
+    // 1. Coba tutup pakai cara standar Bootstrap
+    if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) {
+            modal.hide();
+        }
+    }
+
+    // 2. FORCE CLEANUP (Solusi Bug Redup)
+    // Cari dan hapus semua elemen backdrop yang tertinggal
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    backdrops.forEach(backdrop => backdrop.remove());
+
+    // Hapus class 'modal-open' dari body agar bisa scroll lagi
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('padding-right'); // Hapus padding shift
+    document.body.style.removeProperty('overflow');
+};
+
 const performDelete = () => {
     if (questionToDelete.value) {
         form.delete(route('questions.destroy', [props.questionnaire.id, questionToDelete.value.id]), {
             preserveScroll: true,
             onSuccess: () => {
-                const modalElement = document.getElementById('confirm-delete-modal');
-                const modal = bootstrap.Modal.getInstance(modalElement);
-                if (modal) {
-                    modal.hide();
-                }
+                // Panggil helper function
+                closeModal('confirm-delete-modal');
                 questionToDelete.value = null;
                 form.reset();
             },
@@ -92,31 +111,21 @@ const performDelete = () => {
 };
 
 const saveQuestion = () => {
-    if (editingQuestion.value) {
-        form.put(route('questions.update', [props.questionnaire.id, form.id]), {
-            preserveScroll: true,
-            onSuccess: () => {
-                const modalElement = document.getElementById('question-form-modal');
-                const modal = bootstrap.Modal.getInstance(modalElement);
-                if (modal) {
-                    modal.hide();
-                }
-                form.reset();
-            },
-        });
-    } else {
-        form.post(route('questions.store', props.questionnaire.id), {
-            preserveScroll: true,
-            onSuccess: () => {
-                const modalElement = document.getElementById('question-form-modal');
-                const modal = bootstrap.Modal.getInstance(modalElement);
-                if (modal) {
-                    modal.hide();
-                }
-                form.reset();
-            },
-        });
-    }
+    const submitRoute = editingQuestion.value
+        ? route('questions.update', [props.questionnaire.id, form.id])
+        : route('questions.store', props.questionnaire.id);
+
+    const submitMethod = editingQuestion.value ? 'put' : 'post';
+
+    form[submitMethod](submitRoute, {
+        preserveScroll: true,
+        onSuccess: () => {
+            // Panggil helper function
+            closeModal('question-form-modal');
+            form.reset();
+            editingQuestion.value = null; // Reset editing state
+        },
+    });
 };
 </script>
 

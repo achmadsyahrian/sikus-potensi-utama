@@ -1,135 +1,128 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { defineProps, defineEmits } from 'vue';
-import BaseButton from '@/Components/BaseButton.vue';
-import QuestionnaireInfoCard from './QuestionnaireInfoCard.vue';
-import DataTable from '@/Components/DataTable.vue';
-import BaseTooltip from '@/Components/BaseTooltip.vue';
+import QuestionnaireInfoCard from './QuestionnaireInfoCard.vue'; // Sesuaikan path import
+import RespondentSummary from './Respondents/RespondentSummary.vue';
+import RespondentFilter from './Respondents/RespondentFilter.vue';
+import RespondentTable from './Respondents/RespondentTable.vue';
 
 const props = defineProps({
     questionnaire: Object,
     respondents: Object,
+    programStudies: Array,
 });
 
 const emit = defineEmits(['show-answers']);
 
+// State Filter
+const searchQuery = ref('');
 const selectedRole = ref('all');
+const selectedProdi = ref('all');
 
-const showRespondentAnswers = (type, id) => {
-    emit('show-answers', { type, id });
-};
-
-const getRoleBadgeColor = (roleName) => {
-    switch (roleName) {
-        case 'Dosen':
-            return 'bg-blue-lt';
-        case 'Pegawai':
-            return 'bg-green-lt';
-        case 'Mahasiswa':
-            return 'bg-yellow-lt';
-        case 'Eksternal':
-            return 'bg-purple-lt';
-        default:
-            return 'bg-gray-lt';
-    }
-};
-
-const columns = [
-    { key: 'index', label: 'No.', class: 'fw-bold text-dark w-1' },
-    { key: 'name', label: 'Nama Responden', class: 'fw-bold text-dark' },
-    { key: 'roles', label: 'Peran', class: 'fw-bold text-dark' },
-    { key: 'details', label: 'Identitas / Perusahaan', class: 'fw-bold text-dark' },
-    // { key: 'actions', label: 'Aksi', class: 'text-center fw-bold text-dark' }
-];
-
+// 1. Ambil Daftar Role Unik (Termasuk Eksternal Spesifik)
 const availableRoles = computed(() => {
     const rolesSet = new Set();
-    rolesSet.add('Semua');
-    props.respondents.data.forEach(item => {
-        item.roles.forEach(role => rolesSet.add(role.name));
-    });
+
+    if (props.respondents && props.respondents.data) {
+        props.respondents.data.forEach(item => {
+            if (item.type === 'external' && item.respondent_external) {
+                // Konversi slug role ke Nama Cantik
+                const roleSlug = item.respondent_external.role;
+                let roleName = 'Eksternal';
+                if (roleSlug === 'alumni') roleName = 'Alumni';
+                else if (roleSlug === 'mitra') roleName = 'Mitra Kerjasama';
+                else if (roleSlug === 'pengguna_lulusan') roleName = 'Pengguna Lulusan';
+
+                rolesSet.add(roleName);
+            } else if (item.roles) {
+                item.roles.forEach(r => rolesSet.add(r.name));
+            }
+        });
+    }
     return Array.from(rolesSet);
 });
 
-const tableData = computed(() => {
-    const filteredData = props.respondents.data.filter(item => {
-        if (selectedRole.value === 'all' || selectedRole.value === 'Semua') {
-            return true;
-        }
-        return item.roles.some(role => role.name === selectedRole.value);
-    });
+// 2. Logic Filter Utama (Search & Dropdown)
+const filteredData = computed(() => {
+    if (!props.respondents?.data) return [];
 
-    return {
-        ...props.respondents,
-        data: filteredData,
-        total: filteredData.length,
-    };
+    return props.respondents.data.filter(item => {
+        // --- A. Normalisasi Data (Biar gampang difilter) ---
+        let itemName = '';
+        let itemRoles = [];
+        let itemProdiCode = null;
+        let itemIdentity = ''; // NIM/NIDN/Kontak
+
+        if (item.type === 'external') {
+            // Data Eksternal
+            itemName = item.respondent_external?.name || 'Tanpa Nama';
+            itemIdentity = item.respondent_external?.contact_number || '';
+
+            // Mapping Role Eksternal
+            const slug = item.respondent_external?.role;
+            if (slug === 'alumni') itemRoles.push('Alumni');
+            else if (slug === 'mitra') itemRoles.push('Mitra Kerjasama');
+            else if (slug === 'pengguna_lulusan') itemRoles.push('Pengguna Lulusan');
+            else itemRoles.push('Eksternal');
+
+        } else {
+            // Data Internal (User)
+            itemName = item.user?.name || 'Tanpa Nama';
+            itemRoles = item.roles.map(r => r.name);
+            itemProdiCode = item.user?.student_detail?.program_study_code; // Hanya mahasiswa punya prodi
+
+            // Gabung NIM & NIDN untuk pencarian
+            const nim = item.user?.student_detail?.nim || '';
+            const nidn = item.user?.lecturer_detail?.nidn || '';
+            itemIdentity = `${nim} ${nidn}`;
+        }
+
+        // --- B. Eksekusi Filter ---
+
+        // 1. Filter Role
+        const roleMatch = selectedRole.value === 'all' || itemRoles.includes(selectedRole.value);
+
+        // 2. Filter Prodi (Hanya berlaku jika Internal Mahasiswa)
+        // Jika item tidak punya prodi, dan user memilih filter prodi tertentu -> Hide item
+        // Kecuali user pilih 'all', maka tampilkan semua.
+        let prodiMatch = true;
+        if (selectedProdi.value !== 'all') {
+            prodiMatch = itemProdiCode == selectedProdi.value;
+        }
+
+        // 3. Filter Search (Nama & Identitas)
+        const query = searchQuery.value.toLowerCase();
+        const searchMatch = !query ||
+                            itemName.toLowerCase().includes(query) ||
+                            itemIdentity.toLowerCase().includes(query);
+
+        return roleMatch && prodiMatch && searchMatch;
+    });
 });
 
-const getIdentitas = (item) => {
-    if (!item.user) return '-';
-
-    const rolesArray = item.user.roles ? (Array.isArray(item.user.roles) ? item.user.roles : Object.values(item.user.roles)) : [];
-    const isMahasiswa = rolesArray.some(role => role.name === 'Mahasiswa');
-    const isDosen = rolesArray.some(role => role.name === 'Dosen');
-
-    if (isMahasiswa) {
-        return item.user.student_detail?.nim || '-';
-    }
-    if (isDosen) {
-        return item.user.lecturer_detail?.nidn || '-';
-    }
-    return '-';
-};
+const handleShowAnswers = (payload) => {
+    emit('show-answers', payload);
+}
 </script>
 
 <template>
     <div class="card-body">
         <QuestionnaireInfoCard :questionnaire="questionnaire" />
 
-        <div class="d-flex align-items-center justify-content-between pt-2 pb-4">
-            <div>
-                <h3 class="fw-bold mb-1">Daftar Responden</h3>
-                <h5 class="op-7 mb-2 text-muted">Lihat daftar peserta yang telah mengisi kuesioner beserta ringkasan
-                    jawaban mereka.</h5>
-            </div>
-            <span class="badge bg-green-lt text-green">
-                {{ respondents.total }} Responden
-            </span>
-        </div>
+        <RespondentSummary :respondents="respondents" />
 
-        <div class="d-flex flex-wrap gap-2 mb-4">
-            <button :class="['btn', 'btn-sm', selectedRole === 'all' ? 'btn-primary' : 'btn-outline-primary']"
-                @click="selectedRole = 'all'">
-                Semua
-            </button>
-            <button v-for="role in availableRoles.filter(r => r !== 'Semua')" :key="role"
-                :class="['btn', 'btn-sm', selectedRole === role ? 'btn-primary' : 'btn-outline-primary']"
-                @click="selectedRole = role">
-                {{ role }}
-            </button>
-        </div>
+        <RespondentFilter
+            v-model:searchQuery="searchQuery"
+            v-model:selectedRole="selectedRole"
+            v-model:selectedProdi="selectedProdi"
+            :availableRoles="availableRoles"
+            :programStudies="programStudies"
+        />
 
-        <div class="card">
-            <DataTable :data="tableData" :columns="columns">
-                <template #cell(index)="{ item, index }">
-                    {{ tableData.from + index }}.
-                </template>
-                <template #cell(roles)="{ item }">
-                    <span v-for="role in item.roles" :key="role.id" class="badge me-1"
-                        :class="getRoleBadgeColor(role.name)">
-                        {{ role.name }}
-                    </span>
-                </template>
-                <template #cell(actions)="{ item }">
-                    <BaseTooltip title="Lihat Jawaban" data-bs-toggle="tooltip" data-bs-placement="top">
-                        <BaseButton type="button" variant="primary" class="btn-icon" outline
-                            @click="showRespondentAnswers(item.type, item.id)">
-                            <i class="fa-solid fa-eye"></i>
-                        </BaseButton>
-                    </BaseTooltip>
-                </template>
-            </DataTable>
+        <div class="mt-3">
+            <RespondentTable
+                :data="filteredData"
+                @show-answers="handleShowAnswers"
+            />
         </div>
     </div>
 </template>

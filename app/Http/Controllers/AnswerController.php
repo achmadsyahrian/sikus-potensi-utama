@@ -202,8 +202,14 @@ class AnswerController extends Controller
     {
         // Validasi data input
         $validatedData = $request->validate([
+            // Validasi Role
+            'role' => 'required|in:alumni,mitra,pengguna_lulusan',
+
             'name' => 'required|string|max:255',
-            'company_or_institution' => 'required|string|max:255',
+
+            // Wajib diisi jika role BUKAN alumni
+            'company_or_institution' => 'required_unless:role,alumni|nullable|string|max:255',
+
             'contact_number' => 'required|string|max:255',
             'answers' => 'required|array',
             'answers.*.question_id' => 'required|exists:questions,id',
@@ -213,19 +219,20 @@ class AnswerController extends Controller
         DB::transaction(function () use ($validatedData, $questionnaire) {
             $respondentExternal = RespondentExternal::create([
                 'questionnaire_id' => $questionnaire->id,
+                'role' => $validatedData['role'], // Simpan role
                 'name' => $validatedData['name'],
-                'company_or_institution' => $validatedData['company_or_institution'],
+                'company_or_institution' => $validatedData['company_or_institution'] ?? null,
                 'contact_number' => $validatedData['contact_number'],
             ]);
 
-            // 2. Simpan jawaban kuesioner
+            // Simpan jawaban kuesioner (Logic tetap sama)
             foreach ($validatedData['answers'] as $answerData) {
                 if (isset($answerData['answer_value']) && !is_null($answerData['answer_value']) && $answerData['answer_value'] !== '') {
                     Answer::create([
                         'questionnaire_id' => $questionnaire->id,
                         'question_id' => $answerData['question_id'],
                         'answer_value' => $answerData['answer_value'],
-                        'user_id' => null, 
+                        'user_id' => null,
                         'role_id' => null,
                         'respondent_external_id' => $respondentExternal->id,
                     ]);
@@ -233,7 +240,6 @@ class AnswerController extends Controller
             }
         });
 
-        // Redirect atau berikan respons sukses
         return redirect()->back()->with('success', 'Terima kasih, kuesioner berhasil dikirim!');
     }
 }

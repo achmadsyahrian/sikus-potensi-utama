@@ -4,64 +4,65 @@ namespace Database\Seeders;
 
 use App\Models\Questionnaire;
 use App\Models\User;
-use App\Models\Question;
-use App\Models\Role;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Faker\Factory as Faker;
 
 class AnswerSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     *
-     * @return void
-     */
     public function run()
     {
         $faker = Faker::create('id_ID');
 
-        $users = User::all();
-        $roles = Role::whereNotIn('slug', ['superadmin', 'admin'])->get();
-        $questionnaires = Questionnaire::all();
-        
-        if ($users->isEmpty() || $questionnaires->isEmpty() || $roles->isEmpty()) {
-            echo "Pastikan user, kuesioner, dan role sudah ada sebelum menjalankan seeder ini.\n";
+        // Ambil semua ID user untuk performa random yang lebih cepat
+        $userIds = User::pluck('id');
+        $questionnaires = Questionnaire::with(['questions', 'options'])->get();
+
+        if ($userIds->isEmpty() || $questionnaires->isEmpty()) {
             return;
         }
 
-        // Hapus data jawaban lama
         DB::table('answers')->truncate();
 
-        // Buat 500 data jawaban dummy
-        for ($i = 0; $i < 500; $i++) {
-            $randomUser = $users->random();
-            $randomQuestionnaire = $questionnaires->random();
-            $randomRole = $roles->random();
+        $answers = [];
+        $totalResponses = 2000; // Jumlah simulasi pengisian kuesioner
 
-            // Ambil semua pertanyaan dari kuesioner yang dipilih secara acak
-            $questions = Question::where('questionnaire_id', $randomQuestionnaire->id)->get();
-            
-            if ($questions->isEmpty()) {
-                continue;
-            }
-            
-            // Buat created_at yang acak dalam rentang 1 tahun terakhir
-            $createdAt = $faker->dateTimeBetween('-1 year', 'now');
+        for ($i = 0; $i < $totalResponses; $i++) {
+            $randomUserId = $userIds->random();
+            $questionnaire = $questionnaires->random();
+            $createdAt = $faker->dateTimeBetween('-6 months', 'now');
 
-            foreach ($questions as $question) {
-                DB::table('answers')->insert([
-                    'user_id' => $randomUser->id,
-                    'questionnaire_id' => $randomQuestionnaire->id,
+            $availableOptions = $questionnaire->options;
+
+            foreach ($questionnaire->questions as $question) {
+                $answerValue = null;
+
+                if ($question->question_type === 'multiple_choice' && $availableOptions->isNotEmpty()) {
+                    $answerValue = $availableOptions->random()->option_value;
+                } else {
+                    $answerValue = $faker->sentence();
+                }
+
+                $answers[] = [
+                    'user_id' => $randomUserId,
+                    'questionnaire_id' => $questionnaire->id,
                     'question_id' => $question->id,
-                    'role_id' => $randomRole->id,
-                    'answer_value' => 'Jawaban dummy untuk pertanyaan ' . $question->id,
+                    'role_id' => 5, // Statis sesuai request kamu
+                    'answer_value' => $answerValue,
                     'created_at' => $createdAt,
                     'updated_at' => $createdAt,
-                ]);
+                ];
+
+                // Insert setiap 1000 record agar query tidak terlalu panjang
+                if (count($answers) >= 1000) {
+                    DB::table('answers')->insert($answers);
+                    $answers = [];
+                }
             }
         }
 
-        echo "Berhasil membuat 500 data jawaban dummy dengan created_at dan role yang bervariasi.\n";
+        if (count($answers) > 0) {
+            DB::table('answers')->insert($answers);
+        }
     }
 }

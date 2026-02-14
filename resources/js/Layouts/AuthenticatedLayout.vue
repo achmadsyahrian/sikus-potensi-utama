@@ -6,18 +6,18 @@ import FlashAlert from '@/Components/FlashAlert.vue';
 </script>
 
 <template>
-    
+
     <div class="page">
         <FlashAlert />
         <Header />
-        
+
         <div class="page-wrapper">
             <div class="page-header">
                 <div class="container-xl">
                     <slot name="header" />
                 </div>
             </div>
-            
+
             <div class="page-body">
                 <div class="container-xl">
                     <slot />

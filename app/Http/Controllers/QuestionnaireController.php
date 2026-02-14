@@ -10,6 +10,7 @@ use App\Models\ProgramStudy;
 use App\Models\Questionnaire;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\SatisfactionCriterion;
 use App\Services\QuestionnaireService; // Impor service
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -75,22 +76,24 @@ class QuestionnaireController extends Controller
     {
         $questionnaire->load([
             'categories.questions.category',
-            'answers.user',
+            'options',
             'answers.user.studentDetail',
             'answers.user.lecturerDetail',
-            'answers.user.roles',
             'answers.role',
             'answers.respondentExternal',
         ]);
 
         $baseData = $this->getBaseViewData();
-        $respondents = $this->getPaginatedRespondents($questionnaire);
-        $questionCategories = $questionnaire->categories()->get();
+        $respondents = $this->getRespondentsData($questionnaire);
+        $questionCategories = $questionnaire->categories;
+
+        $satisfactionCriteria = SatisfactionCriterion::orderBy('min_value', 'asc')->get();
 
         return Inertia::render('Questionnaires/Show', array_merge($baseData, [
             'questionnaire' => $questionnaire,
             'questionCategories' => $questionCategories,
             'respondents' => $respondents,
+            'satisfactionCriteria' => $satisfactionCriteria,
         ]));
     }
 
@@ -147,55 +150,48 @@ class QuestionnaireController extends Controller
         return compact('academicPeriods', 'roles', 'faculties', 'programStudies');
     }
 
-    private function getPaginatedRespondents(Questionnaire $questionnaire)
+    private function getRespondentsData(Questionnaire $questionnaire)
     {
-        $userAnswers = $questionnaire->answers()
-            ->with(['user.roles', 'user.studentDetail', 'user.lecturerDetail', 'respondentExternal'])
+        $answers = $questionnaire->answers()
+            ->with(['user.studentDetail', 'user.lecturerDetail', 'role', 'respondentExternal'])
             ->get();
 
         $allRespondents = collect();
 
-        // Ambil responden internal yang unik
-        $userAnswers->whereNotNull('user_id')->unique('user_id')->each(function ($answer) use ($allRespondents) {
-            $user = $answer->user;
-            if ($user) {
-                $allRespondents->push((object)[
-                    'id' => $user->id,
-                    'type' => 'internal',
-                    'name' => $user->name,
-                    'roles' => $user->roles,
-                    'details' => $this->getIdentitas($user)
-                ]);
-            }
-        });
+        $answers->whereNotNull('user_id')
+            ->unique(fn ($item) => $item->user_id . $item->role_id)
+            ->each(function ($answer) use ($allRespondents) {
+                $user = $answer->user;
+                if ($user) {
+                    $allRespondents->push([
+                        'id' => $user->id,
+                        'type' => 'internal',
+                        'name' => $user->name,
+                        'roles' => $answer->role ? [$answer->role] : [],
+                        'user' => $user, // Mengirim objek user utuh (termasuk student_detail)
+                    ]);
+                }
+            });
 
-        // Ambil responden eksternal yang unik
-        $userAnswers->whereNotNull('respondent_external_id')->unique('respondent_external_id')->each(function ($answer) use ($allRespondents) {
-            $external = $answer->respondentExternal;
-            if ($external) {
-                $allRespondents->push((object)[
-                    'id' => $external->id,
-                    'type' => 'external',
-                    'name' => $external->name,
-                    'roles' => [(object)['name' => 'Eksternal']],
-                    'details' => $external->company_or_institution
-                ]);
-            }
-        });
+        $answers->whereNotNull('respondent_external_id')
+            ->unique('respondent_external_id')
+            ->each(function ($answer) use ($allRespondents) {
+                $external = $answer->respondentExternal;
+                if ($external) {
+                    $allRespondents->push([
+                        'id' => $external->id,
+                        'type' => 'external',
+                        'name' => $external->name,
+                        'roles' => [['id' => 0, 'name' => 'Eksternal']],
+                        'respondent_external' => $external,
+                    ]);
+                }
+            });
 
-        // Terapkan paginasi manual pada koleksi gabungan
-        $perPage = 50;
-        $currentPage = Paginator::resolveCurrentPage();
-        $offset = ($currentPage - 1) * $perPage;
-        $paginatedItems = $allRespondents->slice($offset, $perPage)->values();
-
-        return new LengthAwarePaginator(
-            $paginatedItems,
-            $allRespondents->count(),
-            $perPage,
-            $currentPage,
-            ['path' => Paginator::resolveCurrentPath()]
-        );
+        return [
+            'data' => $allRespondents->values(),
+            'total' => $allRespondents->count()
+        ];
     }
 
     private function getIdentitas($user)

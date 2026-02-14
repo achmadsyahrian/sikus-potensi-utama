@@ -36,7 +36,7 @@ const formattedEndDate = computed({
     get() {
         return props.form.end_date ? props.form.end_date.substring(0, 10) : null;
     },
-    set(value) {        
+    set(value) {
         props.form.end_date = value;
     }
 });
@@ -136,11 +136,11 @@ const activationWarning = computed(() => {
                     <p v-if="!canBeActivated && !form.is_active" class="text-danger fs-5">{{ activationWarning }}</p>
 
                     <div class="form-check form-switch d-inline-block">
-                        <input 
-                            type="checkbox" 
-                            v-model="isActiveComputed" 
-                            class="form-check-input" 
-                            id="is-active-check" 
+                        <input
+                            type="checkbox"
+                            v-model="isActiveComputed"
+                            class="form-check-input"
+                            id="is-active-check"
                             :disabled="isDisabled || (!canBeActivated && !isActiveComputed)"
                         >
                         <label class="form-check-label" for="is-active-check">Aktif</label>

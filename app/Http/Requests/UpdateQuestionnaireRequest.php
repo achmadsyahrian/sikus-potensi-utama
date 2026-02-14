@@ -29,9 +29,9 @@ class UpdateQuestionnaireRequest extends FormRequest
             'description' => ['nullable'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-            'targets' => ['required', 'array'],
-            'targets.*.target_type' => ['required', 'string', Rule::in(['role', 'university', 'faculty', 'program_study'])],
-            'targets.*.target_value' => ['required', 'max:255'],
+            'targets' => ['nullable', 'array'],
+            'targets.*.target_type' => ['required_with:targets', 'string', Rule::in(['role', 'university', 'faculty', 'program_study'])],
+            'targets.*.target_value' => ['required_with:targets', 'max:255'],
         ];
     }
 }

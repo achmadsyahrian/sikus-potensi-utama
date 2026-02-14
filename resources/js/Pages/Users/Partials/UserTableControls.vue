@@ -44,13 +44,13 @@ const emit = defineEmits(['update:search', 'update:selectedRole']);
                     </svg>
                 </span>
             </div>
-            
+
             <!-- Tombol Refresh -->
             <BaseButton type="button" variant="secondary" outline class="me-md-2 mb-2 mb-md-0" @click="handleRefresh">
                 <i class="fa-solid fa-arrow-rotate-right me-2"></i>
                 Refresh
             </BaseButton>
-            
+
             <!-- Tombol Tambah Pengguna -->
             <Link :href="route('users.create')">
                 <BaseButton type="button" variant="primary" full>

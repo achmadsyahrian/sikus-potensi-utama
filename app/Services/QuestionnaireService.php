@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Services;
 
 use App\Models\Faculty;
@@ -13,15 +12,16 @@ class QuestionnaireService
     {
         return DB::transaction(function () use ($data) {
             $questionnaire = Questionnaire::create([
-                'name' => $data['name'],
-                'description' => $data['description'],
+                'name'               => $data['name'],
+                'description'        => $data['description'],
                 'academic_period_id' => $data['academic_period_id'],
-                'start_date' => $data['start_date'],
-                'end_date' => $data['end_date'],
+                'start_date'         => $data['start_date'],
+                'end_date'           => $data['end_date'],
             ]);
 
-            $this->syncTargets($questionnaire, $data['targets']);
-            
+            $targets = $data['targets'] ?? [];
+            $this->syncTargets($questionnaire, $targets);
+
             return $questionnaire;
         });
     }
@@ -29,27 +29,34 @@ class QuestionnaireService
     public function updateQuestionnaire(Questionnaire $questionnaire, array $data): Questionnaire
     {
         return DB::transaction(function () use ($questionnaire, $data) {
-            if (!$questionnaire->is_active && isset($data['is_active']) && $data['is_active']) {
+            if (! $questionnaire->is_active && isset($data['is_active']) && $data['is_active']) {
                 $this->ensureReadyForActivation($questionnaire);
             }
 
             $questionnaire->update([
-                'name' => $data['name'],
-                'description' => $data['description'],
+                'name'               => $data['name'],
+                'description'        => $data['description'],
                 'academic_period_id' => $data['academic_period_id'],
-                'is_active' => $data['is_active'],
-                'start_date' => $data['start_date'],
-                'end_date' => $data['end_date'],
+                'is_active'          => $data['is_active'],
+                'start_date'         => $data['start_date'],
+                'end_date'           => $data['end_date'],
             ]);
 
-            $this->syncTargets($questionnaire, $data['targets']);
-            
+            $targets = $data['targets'] ?? [];
+            $this->syncTargets($questionnaire, $targets);
+
             return $questionnaire;
         });
     }
 
     protected function syncTargets(Questionnaire $questionnaire, array $targets)
     {
+        $questionnaire->targets()->delete();
+
+        if (empty($targets)) {
+            return;
+        }
+
         $targetsCollection = collect($targets);
 
         $finalTargets = $targetsCollection->reject(function ($target) use ($targetsCollection) {
@@ -68,7 +75,7 @@ class QuestionnaireService
         $questionnaire->targets()->delete();
         foreach ($finalTargets as $target) {
             $questionnaire->targets()->create([
-                'target_type' => $target['target_type'],
+                'target_type'  => $target['target_type'],
                 'target_value' => $target['target_value'],
             ]);
         }

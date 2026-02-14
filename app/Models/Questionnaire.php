@@ -55,7 +55,6 @@ class Questionnaire extends Model
         return $this->hasMany(Question::class)->whereNull('category_id');
     }
 
-
     public function options(): HasMany
     {
         return $this->hasMany(QuestionOption::class);

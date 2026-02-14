@@ -24497,7 +24497,7 @@ Chart sparkline
 
 .bg-light-lt {
   --tblr-bg-opacity: 1;
-  --tblr-text-opacity: 1;
+  /* --tblr-text-opacity: 1; */
   color: rgba(var(--tblr-light-rgb), var(--tblr-text-opacity)) !important;
   background-color: rgba(var(--tblr-light-lt-rgb), var(--tblr-bg-opacity)) !important;
 }

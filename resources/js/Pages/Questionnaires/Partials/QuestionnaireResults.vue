@@ -1,178 +1,194 @@
 <script setup>
-import { computed, ref, nextTick } from 'vue';
-import { defineProps } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import QuestionnaireInfoCard from './QuestionnaireInfoCard.vue';
+import ResultSummary from './Results/ResultSummary.vue';
+import ResultQuestionChart from './Results/ResultQuestionChart.vue';
+import ResultScoreAnalysis from './Results/ResultScoreAnalysis.vue';
+import ResultEssayList from './Results/ResultEssayList.vue';
+import BaseOffcanvas from '@/Components/BaseOffcanvas.vue';
 
 const props = defineProps({
     questionnaire: Object,
+    roles: Array,
+    satisfactionCriteria: Array,
+    programStudies: Array
 });
 
-const totalResponden = computed(() => {
-    const uniqueRespondents = new Set(
-        props.questionnaire.answers.map(a => {
-            if (a.user_id) {
-                return `internal-${a.user_id}`;
-            } else if (a.respondent_external_id) {
-                return `external-${a.respondent_external_id}`;
-            }
-            return null;
-        })
-    );
-    return uniqueRespondents.size;
-});
+const activeCategoryFilter = ref('all');
+const sidebarSearch = ref('');
+const sidebarData = ref({ title: '', answers: [] });
+const displayLimit = ref(50);
 
-const totalQuestions = computed(() => props.questionnaire.questions.length);
+// Helper untuk mendapatkan Nama
+const getRespondentName = (ans) => ans.user?.name || ans.respondent_external?.name || 'Responden';
 
-const totalAnswers = computed(() => props.questionnaire.answers.length);
+// Helper untuk mendapatkan NIM/NIDN berdasarkan detail user
+const getRespondentIdentity = (ans) => {
+    if (!ans.user) return '-';
 
-const answersByQuestion = computed(() => {
-    const grouped = {};
-    props.questionnaire.questions.forEach(q => {
-        grouped[q.id] = {
-            question: q,
-            answers: props.questionnaire.answers.filter(a => a.question_id === q.id),
-        };
-    });
-    return grouped;
-});
-
-const getOptionStatistics = (questionAnswers) => {
-    const total = questionAnswers.length;
-    const optionCounts = {};
-    props.questionnaire.options.forEach(opt => {
-        optionCounts[opt.option_text] = 0;
-    });
-
-    questionAnswers.forEach(ans => {
-        const opt = props.questionnaire.options.find(o => o.option_value == ans.answer_value);
-        if (opt) optionCounts[opt.option_text]++;
-    });
-
-    return Object.keys(optionCounts).map(optionText => ({
-        option_text: optionText,
-        count: optionCounts[optionText],
-        percentage: total > 0 ? ((optionCounts[optionText] / total) * 100).toFixed(1) : 0,
-    }));
-};
-
-const selectedQuestionId = ref('all');
-const openAccordionId = ref(null);
-
-const selectQuestion = (qid) => {
-    selectedQuestionId.value = qid;
-    openAccordionId.value = qid === 'all' ? null : qid;
-
-    nextTick(() => {
-        document.querySelectorAll('.accordion-collapse').forEach(el => el.classList.remove('show'));
-        if (qid !== 'all') {
-            const el = document.getElementById(`collapse-${qid}`);
-            if (el) {
-                el.classList.add('show');
-            }
-        }
-    });
-};
-
-const getRespondentName = (answer) => {
-    if (answer.user && answer.user.name) {
-        return answer.user.name;
+    // Cek Mahasiswa (NIM)
+    if (ans.user.student_detail) {
+        return `NIM: ${ans.user.student_detail.nim}`;
     }
-    if (answer.respondent_external && answer.respondent_external.name) {
-        return answer.respondent_external.name;
+
+    // Cek Dosen/Pegawai (NIDN)
+    if (ans.user.lecturer_detail) {
+        return `NIDN: ${ans.user.lecturer_detail.nidn}`;
     }
-    return 'Responden Eksternal';
+
+    return '-';
 };
+
+const openFullAnswers = (data) => {
+    sidebarSearch.value = '';
+    displayLimit.value = 50;
+    sidebarData.value = { title: data.question.question_text, answers: data.answers };
+    new bootstrap.Offcanvas(document.getElementById('offcanvasAnswers')).show();
+};
+
+const filteredQuestions = computed(() => {
+    if (activeCategoryFilter.value === 'all') return props.questionnaire.questions;
+    return props.questionnaire.questions.filter(q => q.category_id == activeCategoryFilter.value);
+});
+
+// Logic Pencarian yang diperbarui (Name, NIM, NIDN, atau Answer)
+const filteredSidebarAnswers = computed(() => {
+    const query = sidebarSearch.value.toLowerCase();
+    const all = sidebarData.value.answers;
+
+    if (!query) return all.slice(0, displayLimit.value);
+
+    return all.filter(a => {
+        const name = (a.user?.name || '').toLowerCase();
+        const nim = (a.user?.student_detail?.nim || '').toLowerCase();
+        const nidn = (a.user?.lecturer_detail?.nidn || '').toLowerCase();
+        const content = (a.answer_value || '').toLowerCase();
+
+        return name.includes(query) ||
+               nim.includes(query) ||
+               nidn.includes(query) ||
+               content.includes(query);
+    }).slice(0, displayLimit.value);
+});
 </script>
 
 <template>
     <div class="card-body">
         <QuestionnaireInfoCard :questionnaire="questionnaire" />
 
-        <div class="d-flex align-items-center justify-content-between pt-2 pb-4">
-            <div>
-                <h3 class="fw-bold mb-1">Ringkasan Analisis</h3>
-                <h5 class="op-7 mb-2 text-muted">Ringkasan hasil dan statistik jawaban kuesioner.</h5>
-            </div>
-        </div>
+        <div class="p-3">
+            <ResultScoreAnalysis
+                v-if="questionnaire.answers.length > 0"
+                :questionnaire="questionnaire"
+                :criteria="satisfactionCriteria"
+                :programStudies="programStudies || []"
+                :roles="roles"
+            />
 
-        <div class="row g-3 mb-4">
-            <div class="col-sm-3" v-for="(info, idx) in [
-                { icon: 'fa-users', color: 'primary', value: totalResponden, label: 'Total Responden' },
-                { icon: 'fa-question-circle', color: 'success', value: totalQuestions, label: 'Total Pertanyaan' },
-                { icon: 'fa-poll-h', color: 'info', value: totalAnswers, label: 'Total Jawaban' },
-                { icon: 'fa-check-circle', color: 'warning', value: questionnaire.options.length, label: 'Opsi Jawaban' }
-            ]" :key="idx">
-                <div class="card text-center border-0 shadow-sm">
-                    <div class="card-body">
-                        <i :class="`fa-solid ${info.icon} fa-2x text-${info.color} mb-2`"></i>
-                        <h5 class="fw-bold">{{ info.value }}</h5>
-                        <p class="text-muted small mb-0">{{ info.label }}</p>
+            <ResultSummary :questionnaire="questionnaire" :roles="roles" :criteria="satisfactionCriteria" />
+
+            <div class="card shadow-sm my-4">
+                <div class="card-body p-0">
+                    <div class="d-flex align-items-center p-3 border-bottom bg-light-lt">
+                        <i class="fa-solid fa-filter text-primary me-2"></i>
+                        <span class="fw-bold text-dark">Filter Berdasarkan Kategori</span>
                     </div>
-                </div>
-            </div>
-        </div>
+                    <div class="p-3">
+                        <div class="nav nav-pills gap-2 flex-nowrap overflow-auto pb-2 custom-scrollbar">
+                            <a href="javascript:void(0)"
+                            class="nav-link px-3 py-2 border shadow-none transition-all"
+                            :class="activeCategoryFilter === 'all' ? 'active bg-primary text-white border-primary' : 'bg-white text-muted border-primary-lt'"
+                            @click="activeCategoryFilter = 'all'">
+                                <i class="fa-solid fa-layer-group me-1"></i> Semua Kategori
+                            </a>
 
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body d-flex flex-wrap gap-2">
-                <button class="btn btn-sm" :class="selectedQuestionId === 'all' ? 'btn-primary' : 'btn-outline-primary'"
-                    @click="selectQuestion('all')">
-                    Semua
-                </button>
-                <button v-for="(q, index) in questionnaire.questions" :key="q.id" class="btn btn-sm"
-                    :class="selectedQuestionId === q.id ? 'btn-primary' : 'btn-outline-primary'"
-                    @click="selectQuestion(q.id)">
-                    Q{{ index + 1 }}
-                </button>
-            </div>
-        </div>
-
-        <div class="accordion" id="accordion-results">
-            <div v-for="(group, qid) in answersByQuestion" :key="qid"
-                v-show="selectedQuestionId === 'all' || selectedQuestionId === group.question.id"
-                class="accordion-item border rounded-3 mb-2">
-                <h2 class="accordion-header">
-                    <button class="accordion-button fw-semibold"
-                        :class="{ collapsed: openAccordionId !== group.question.id }" type="button"
-                        data-bs-toggle="collapse" :data-bs-target="`#collapse-${qid}`">
-                        {{ group.question.question_text }}
-                        <span class="badge ms-2"
-                            :class="group.question.question_type === 'multiple_choice' ? 'bg-blue-lt' : 'bg-purple-lt'">
-                            {{ group.question.question_type === 'multiple_choice' ? 'Pilihan Ganda' : 'Teks' }}
-                        </span>
-                    </button>
-                </h2>
-                <div :id="`collapse-${qid}`" class="accordion-collapse collapse"
-                    :class="{ show: selectedQuestionId !== 'all' && openAccordionId === group.question.id }">
-                    <div class="accordion-body">
-                        <div v-if="group.question.question_type === 'multiple_choice'">
-                            <div v-for="stats in getOptionStatistics(group.answers)" :key="stats.option_text"
-                                class="mb-3">
-                                <div class="d-flex justify-content-between">
-                                    <span>{{ stats.option_text }}</span>
-                                    <small class="text-muted">{{ stats.count }} ({{ stats.percentage }}%)</small>
-                                </div>
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar bg-primary" :style="{ width: stats.percentage + '%' }">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div v-else>
-                            <ul class="list-group">
-                                <li v-for="(answer, idx) in group.answers" :key="idx" class="list-group-item">
-                                    <p class="mb-1">{{ answer.answer_value || '-' }}</p>
-                                    <small class="text-muted">
-                                        {{ getRespondentName(answer) }}
-                                        <span v-if="answer.created_at"> • {{ new
-                                            Date(answer.created_at).toLocaleDateString() }}</span>
-                                    </small>
-                                </li>
-                            </ul>
+                            <a v-for="cat in questionnaire.categories" :key="cat.id"
+                            href="javascript:void(0)"
+                            class="nav-link px-3 py-2 border shadow-none transition-all text-nowrap"
+                            :class="activeCategoryFilter === cat.id ? 'active bg-primary text-white border-primary' : 'bg-white text-muted border-primary-lt'"
+                            @click="activeCategoryFilter = cat.id">
+                            {{ cat.name }}
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <div v-for="(q, i) in filteredQuestions" :key="q.id">
+                <ResultQuestionChart
+                    v-if="q.question_type === 'multiple_choice'"
+                    :question="q" :index="i" :options="questionnaire.options"
+                    :answers="questionnaire.answers.filter(a => a.question_id === q.id)"
+                    :criteria="satisfactionCriteria"
+                />
+                <ResultEssayList
+                    v-else
+                    :question="q" :index="i"
+                    :answers="questionnaire.answers.filter(a => a.question_id === q.id)"
+                    @open-detail="openFullAnswers"
+                />
+            </div>
         </div>
+
+        <BaseOffcanvas id="offcanvasAnswers" :title="sidebarData.title" width="600px">
+            <template #header>
+                <div class="p-3 bg-light border-bottom">
+                    <input type="text" v-model="sidebarSearch" class="form-control border-primary" placeholder="Cari nama, NIM, NIDN, atau jawaban...">
+                </div>
+            </template>
+            <template #body>
+                <div class="list-group list-group-flush">
+                    <div v-for="(ans, idx) in filteredSidebarAnswers" :key="idx" class="list-group-item py-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="badge bg-blue-lt fw-bold">{{ getRespondentName(ans) }}</span>
+                            <span class="text-muted small">{{ new Date(ans.created_at).toLocaleDateString('id-ID') }}</span>
+                        </div>
+                        <div class="text-muted mb-2" style="font-size: 11px;">
+                            <i class="fa-solid fa-id-card me-1"></i> {{ getRespondentIdentity(ans) }}
+                            <span class="mx-1">|</span>
+                            <i class="fa-solid fa-user-tag me-1"></i> Role: {{ ans.role?.name || '-' }}
+                        </div>
+                        <div class="text-dark small p-2 bg-light rounded border border-dashed border-primary-lt">
+                            "{{ ans.answer_value }}"
+                        </div>
+                    </div>
+                    <div v-if="filteredSidebarAnswers.length === 0" class="p-5 text-center text-muted">
+                        Data tidak ditemukan.
+                    </div>
+                    <div v-if="displayLimit < sidebarData.answers.length && !sidebarSearch" class="p-3">
+                        <button @click="displayLimit += 100" class="btn btn-white w-100 border shadow-sm">Muat Lebih Banyak...</button>
+                    </div>
+                </div>
+            </template>
+        </BaseOffcanvas>
     </div>
 </template>
+
+<style scoped>
+/* Styling tambahan agar UI lebih smooth */
+.nav-link {
+    border-radius: 8px !important;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.nav-link.active {
+    box-shadow: 0 4px 6px -1px rgba(32, 107, 196, 0.2) !important;
+}
+
+.transition-all {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Merapikan scrollbar horizontal agar tidak jelek di Windows */
+.custom-scrollbar::-webkit-scrollbar {
+    height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+}
+</style>
