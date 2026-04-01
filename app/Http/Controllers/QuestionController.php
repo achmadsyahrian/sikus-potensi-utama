@@ -31,7 +31,7 @@ class QuestionController extends Controller
         $data = array_merge($validated, ['order' => $nextOrder]);
         $questionnaire->questions()->create($data);
 
-        return redirect()->route('questionnaires.show', $questionnaire->id)
+        return redirect()->route('questionnaires.questions', $questionnaire->id)
             ->with('success', 'Pertanyaan berhasil ditambahkan.');
     }
 
@@ -53,7 +53,7 @@ class QuestionController extends Controller
             'is_required' => ['required', 'boolean'],
             'order' => ['required', 'integer', 'min:1', 'max:' . $totalQuestionsInCategory],
         ]);
-        
+
         $validated['category_id'] = $question->category_id;
 
         if ($validated['order'] !== $originalOrder) {
@@ -69,7 +69,7 @@ class QuestionController extends Controller
 
         $question->update($validated);
 
-        return redirect()->route('questionnaires.show', $questionnaire->id)
+        return redirect()->route('questionnaires.questions', $questionnaire->id)
             ->with('success', 'Pertanyaan berhasil diperbarui.');
     }
 
@@ -91,7 +91,7 @@ class QuestionController extends Controller
             $q->update(['order' => $q->order - 1]);
         }
 
-        return redirect()->route('questionnaires.show', $questionnaire->id)
+        return redirect()->route('questionnaires.questions', $questionnaire->id)
             ->with('success', 'Pertanyaan berhasil dihapus.');
     }
 }

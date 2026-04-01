@@ -24,7 +24,6 @@ const sortedCategories = computed(() => {
     return [...props.questionCategories].sort((a, b) => a.order - b.order);
 });
 
-// Computed property untuk mengecek apakah kuesioner sudah ada jawabannya
 const hasAnswers = computed(() => {
     return props.questionnaire.total_answers > 0;
 });

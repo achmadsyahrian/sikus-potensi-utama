@@ -40,7 +40,6 @@ const generatePublicLink = () => {
 
 <template>
     <form @submit.prevent="$emit('submit')">
-        <!-- Form Aksi Kuesioner (Dipindahkan ke atas) -->
         <div class="card-header d-flex justify-content-end mb-3">
             <template v-if="isCreate">
                 <Link :href="route('questionnaires.index')">
@@ -60,13 +59,11 @@ const generatePublicLink = () => {
             </template>
         </div>
 
-        <!-- Form Informasi Dasar -->
         <QuestionnaireBasicInfoForm :form="form" :academicPeriods="academicPeriods" :is-disabled="isDisabled"
             :is-editing="isEditing" :is-create="isCreate" :questionnaire="questionnaire" />
 
         <hr>
 
-        <!-- Form Penargetan Kuesioner -->
         <div class="card-body">
             <QuestionnaireTargetForm :form="form" :roles="roles" :faculties="faculties" :programStudies="programStudies"
                 :is-disabled="isDisabled" :is-editing="isEditing" :is-create="isCreate" />
@@ -74,7 +71,6 @@ const generatePublicLink = () => {
 
         <hr>
 
-        <!-- Form Link Publik -->
         <QuestionnairePublicLinkForm
             v-if="!isCreate"
             :questionnaire="questionnaire"

@@ -12,8 +12,8 @@ use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\QuestionnaireController;
 use App\Http\Controllers\QuestionOptionController;
 use App\Http\Controllers\RoleSelectionController;
-use App\Http\Controllers\UserController;
 use App\Http\Controllers\SatisfactionCriteriaController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -37,12 +37,28 @@ Route::middleware('auth')->group(function () {
     // Termasuk role 'mahasiswa', 'dosen', 'pegawai', 'mitra'
     // Route::get('/answers', [AnswerController::class, 'index'])->name('answers.index');
 
+    Route::get('questionnaires/{questionnaire}/analysis', [QuestionnaireController::class, 'getAnalysisData'])
+        ->name('questionnaires.analysis');
+
     Route::middleware('role:admin,superadmin')->group(function () {
         // =========== Manajemen Kuesioner ===========
         Route::get('/questionnaires', [QuestionnaireController::class, 'index'])->name('questionnaires.index');
         Route::get('/questionnaires/create', [QuestionnaireController::class, 'create'])->name('questionnaires.create');
         Route::post('/questionnaires', [QuestionnaireController::class, 'store'])->name('questionnaires.store');
+
         Route::get('/questionnaires/{questionnaire}', [QuestionnaireController::class, 'show'])->name('questionnaires.show');
+        Route::get('/questionnaires/{questionnaire}/categories', [QuestionnaireController::class, 'categories'])->name('questionnaires.categories');
+        Route::get('/questionnaires/{questionnaire}/options', [QuestionnaireController::class, 'options'])->name('questionnaires.options');
+        Route::get('/questionnaires/{questionnaire}/questions', [QuestionnaireController::class, 'questions'])->name('questionnaires.questions');
+        Route::get('/questionnaires/{questionnaire}/results', [QuestionnaireController::class, 'results'])->name('questionnaires.results');
+        Route::get('/questionnaires/{questionnaire}/respondents', [QuestionnaireController::class, 'respondents'])->name('questionnaires.respondents');
+
+        Route::get('/questionnaires/{questionnaire}/respondents/{type}/{id}/answers', [QuestionnaireController::class, 'getRespondentAnswers'])
+            ->name('questionnaires.respondent-answers');
+
+        Route::get('/questionnaires/{questionnaire}/export', [QuestionnaireController::class, 'exportRespondents'])
+            ->name('questionnaires.export');
+
         Route::put('/questionnaires/{questionnaire}', [QuestionnaireController::class, 'update'])->name('questionnaires.update');
         Route::delete('/questionnaires/{questionnaire}', [QuestionnaireController::class, 'destroy'])->name('questionnaires.destroy');
 

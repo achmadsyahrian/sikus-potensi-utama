@@ -38,7 +38,7 @@ class QuestionOptionController extends Controller
         $option->order = $request->order;
         $option->save();
 
-        return redirect()->route('questionnaires.show', $request->questionnaire_id)->with('success', 'Opsi jawaban berhasil dibuat.');
+        return redirect()->route('questionnaires.options', $request->questionnaire_id)->with('success', 'Opsi jawaban berhasil dibuat.');
     }
 
     public function update(Request $request, QuestionOption $option)
@@ -73,13 +73,13 @@ class QuestionOptionController extends Controller
         $option->order = $request->order;
         $option->save();
 
-        return redirect()->route('questionnaires.show', $option->questionnaire_id)->with('success', 'Opsi jawaban berhasil diperbarui.');
+        return redirect()->route('questionnaires.options', $option->questionnaire_id)->with('success', 'Opsi jawaban berhasil diperbarui.');
     }
 
     public function destroy(QuestionOption $option)
     {
         $option->delete();
 
-        return redirect()->route('questionnaires.show', $option->questionnaire_id)->with('success', 'Opsi jawaban berhasil dihapus.');
+        return redirect()->route('questionnaires.options', $option->questionnaire_id)->with('success', 'Opsi jawaban berhasil dihapus.');
     }
 }

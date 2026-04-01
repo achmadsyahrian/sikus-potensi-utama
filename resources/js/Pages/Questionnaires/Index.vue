@@ -7,18 +7,17 @@ import QuestionnaireTableControls from './Partials/QuestionnaireTableControls.vu
 import BaseAlert from '@/Components/BaseAlert.vue';
 import BaseButton from '@/Components/BaseButton.vue';
 import BaseTooltip from '@/Components/BaseTooltip.vue';
-// BARU: Impor modal konfirmasi
 import ConfirmModal from '@/Components/ConfirmModal.vue';
 
 const props = defineProps({
     questionnaires: Object,
+    academicPeriods: Array,
     filters: Object,
 });
 
 const page = usePage();
 const appName = page.props.app_name;
 
-// BARU: Ref untuk kuesioner yang akan dihapus
 const questionnaireToDelete = ref(null);
 
 const isSuperAdmin = computed(() => {
@@ -41,7 +40,7 @@ const deleteQuestionnaire = () => {
 
 const columns = ref([
     { label: '#', key: 'row_number', class: 'w-1', dataClass: 'text-muted fs-5' },
-    { label: 'Nama', key: 'name', class: '', dataClass: 'text-muted' },
+    { label: 'Nama', key: 'name', class: '', dataClass: 'text-muted fw-bold' },
     { label: 'Periode Akademik', key: 'academic_period.name', class: '', dataClass: 'text-muted' },
     { label: 'Tanggal Mulai', key: 'formatted_start_date', class: '', dataClass: 'text-muted' },
     { label: 'Tanggal Akhir', key: 'formatted_end_date', class: '', dataClass: 'text-muted' },
@@ -56,27 +55,26 @@ const columns = ref([
         <template #header>
             <div class="row g-2 align-items-center">
                 <div class="col">
-                    <div class="page-pretitle">
-                        Manajemen Kuesioner
-                    </div>
-                    <h2 class="page-title">
-                        Daftar Kuesioner
-                    </h2>
+                    <div class="page-pretitle">Manajemen Kuesioner</div>
+                    <h2 class="page-title">Daftar Kuesioner</h2>
                 </div>
             </div>
         </template>
 
-        <QuestionnaireTableControls :filters="props.filters" />
+        <QuestionnaireTableControls
+            :filters="props.filters"
+            :academicPeriods="props.academicPeriods"
+        />
 
-        <div class="card">
+        <div class="card shadow-sm border-0">
             <DataTable :data="questionnaires" :columns="columns">
                 <template #cell(row_number)="{ item, index }">
                     {{ questionnaires.from + index }}
                 </template>
 
                 <template #cell(is_active)="{ item }">
-                    <span v-if="item.is_active" class="badge bg-green-lt fs-6">Aktif</span>
-                    <span v-else class="badge bg-red-lt fs-6">Non-aktif</span>
+                    <span v-if="item.is_active" class="badge bg-green-lt fs-6 px-2 py-1"><i class="fa-solid fa-check me-1"></i> Aktif</span>
+                    <span v-else class="badge bg-red-lt fs-6 px-2 py-1"><i class="fa-solid fa-xmark me-1"></i> Non-aktif</span>
                 </template>
 
                 <template #cell(actions)="{ item }">
@@ -88,14 +86,14 @@ const columns = ref([
                                 </BaseButton>
                             </Link>
                         </BaseTooltip>
-                        
+
                         <BaseTooltip v-if="isSuperAdmin || item.total_answers === 0" title="Hapus Kuesioner" data-bs-toggle="tooltip" data-bs-placement="top">
-                            <BaseButton 
-                                variant="danger" 
-                                class="btn-icon" 
-                                outline 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#confirmDeleteModal" 
+                            <BaseButton
+                                variant="danger"
+                                class="btn-icon"
+                                outline
+                                data-bs-toggle="modal"
+                                data-bs-target="#confirmDeleteModal"
                                 @click.prevent="showConfirmDeletionModal(item)"
                             >
                                 <i class="fa-solid fa-trash"></i>

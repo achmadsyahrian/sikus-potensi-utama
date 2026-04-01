@@ -27,7 +27,6 @@ const canGenerate = computed(() => {
     return props.questionnaire.is_active && !props.questionnaire.public_link_token;
 });
 
-// State untuk notifikasi
 const notification = ref({
     show: false,
     message: '',
@@ -39,10 +38,10 @@ const copyLink = async () => {
     linkInput.value = publicLink.value;
     document.body.appendChild(linkInput);
     linkInput.select();
-    
+
     try {
         document.execCommand('copy');
-        
+
         notification.value = {
             show: true,
             message: 'Tautan kuesioner berhasil disalin!',
@@ -57,7 +56,6 @@ const copyLink = async () => {
         };
     } finally {
         document.body.removeChild(linkInput);
-        // Sembunyikan notifikasi setelah 3 detik
         setTimeout(() => {
             notification.value.show = false;
         }, 3000);
@@ -105,7 +103,7 @@ const copyLink = async () => {
               <span class="text-success">Tautan berhasil dibuat dan siap dibagikan.</span>
             </div>
         </div>
-        
+
         <div v-else>
             <p class="text-muted">Kuesioner harus aktif terlebih dahulu untuk dapat membuat tautan publik.</p>
         </div>

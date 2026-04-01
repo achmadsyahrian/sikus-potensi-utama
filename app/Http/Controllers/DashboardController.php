@@ -7,8 +7,8 @@ use App\Models\Faculty;
 use App\Models\ProgramStudy;
 use App\Models\Questionnaire;
 use App\Models\Role;
-use App\Models\User;
 use App\Models\SatisfactionCriterion;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
@@ -42,160 +42,180 @@ class DashboardController extends Controller
     {
         $totalQuestionnairesCount  = Questionnaire::count();
         $activeQuestionnairesCount = Questionnaire::where('is_active', true)->count();
-
-        $totalResponsesCount = DB::table('answers')->count();
-
+        $totalResponsesCount       = DB::table('answers')->count();
         $totalProgramStudiesCount  = ProgramStudy::count();
         $totalFacultiesCount       = Faculty::count();
         $totalAcademicPeriodsCount = AcademicPeriod::count();
-        $totalUsersCount           = ($activeRole->slug === 'superadmin') ? User::count() : null;
-        $totalLocalUsersCount      = ($activeRole->slug === 'superadmin') ? User::where('auth_provider', 'local')->count() : null;
-        $totalSevimaUsersCount     = ($activeRole->slug === 'superadmin') ? User::where('auth_provider', 'sevima')->count() : null;
 
+        $totalUsersCount       = ($activeRole->slug === 'superadmin') ? User::count() : null;
+        $totalLocalUsersCount  = ($activeRole->slug === 'superadmin') ? User::where('auth_provider', 'local')->count() : null;
+        $totalSevimaUsersCount = ($activeRole->slug === 'superadmin') ? User::where('auth_provider', 'sevima')->count() : null;
+
+        // ─── Responses By Faculty ──────────────────────────────────────────────
         $totalResponsesByFaculty = DB::table('answers')
             ->join('student_details', 'answers.user_id', '=', 'student_details.user_id')
             ->join('program_studies', 'student_details.program_study_code', '=', 'program_studies.program_study_code')
             ->join('faculties', 'program_studies.faculty_code', '=', 'faculties.faculty_code')
-            ->select('faculties.name as faculty_name', DB::raw('count(answers.id) as total'))
-            ->groupBy('faculties.name')
+            ->select('faculties.name as faculty_name', DB::raw('COUNT(answers.id) as total'))
+            ->groupBy('faculties.faculty_code', 'faculties.name')
             ->get();
 
+        // ─── Monthly Responses By Role ─────────────────────────────────────────
         $responsesByRoleAndMonth = DB::table('answers')
             ->leftJoin('roles', 'answers.role_id', '=', 'roles.id')
-            ->select(DB::raw('COALESCE(roles.name, "Eksternal") as role_name'), DB::raw('DATE_FORMAT(answers.created_at, "%Y-%m") as month'), DB::raw('count(answers.id) as total'))
+            ->select(
+                DB::raw('COALESCE(roles.name, "Eksternal") as role_name'),
+                DB::raw('DATE_FORMAT(answers.created_at, "%Y-%m") as month'),
+                DB::raw('COUNT(answers.id) as total')
+            )
             ->groupBy('role_name', 'month')
             ->orderBy('month')
             ->get();
 
-        $roles   = Role::whereNotIn('slug', ['superadmin', 'admin'])->get()->pluck('name')->toArray();
+        $roles   = Role::whereNotIn('slug', ['superadmin', 'admin'])->pluck('name')->toArray();
         $roles[] = 'Eksternal';
         $months  = $responsesByRoleAndMonth->pluck('month')->unique()->sort()->values()->toArray();
 
-        $monthlyResponses = [];
-        foreach ($roles as $roleName) {
-            $data = [];
-            foreach ($months as $month) {
-                $response = $responsesByRoleAndMonth->where('role_name', $roleName)->where('month', $month)->first();
-                $data[]   = $response ? $response->total : 0;
-            }
-            $monthlyResponses[] = [
+        $monthlyResponses = collect($roles)->map(function ($roleName) use ($responsesByRoleAndMonth, $months) {
+            return [
                 'name' => $roleName,
-                'data' => $data,
+                'data' => collect($months)->map(function ($month) use ($responsesByRoleAndMonth, $roleName) {
+                    $found = $responsesByRoleAndMonth
+                        ->where('role_name', $roleName)
+                        ->where('month', $month)
+                        ->first();
+                    return $found ? $found->total : 0;
+                })->toArray(),
             ];
-        }
+        })->toArray();
 
+        // ─── Responses By Program Study ────────────────────────────────────────
         $totalResponsesByProgramStudy = DB::table('answers')
             ->join('student_details', 'answers.user_id', '=', 'student_details.user_id')
             ->join('program_studies', 'student_details.program_study_code', '=', 'program_studies.program_study_code')
-            ->select('program_studies.name as program_study_name', DB::raw('count(answers.id) as total'))
-            ->groupBy('program_studies.name')
+            ->select('program_studies.name as program_study_name', DB::raw('COUNT(answers.id) as total'))
+            ->groupBy('program_studies.program_study_code', 'program_studies.name')
             ->get();
 
+        // ─── Responses By Role ─────────────────────────────────────────────────
         $totalResponsesByRole = DB::table('answers')
             ->leftJoin('roles', 'answers.role_id', '=', 'roles.id')
-            ->select(DB::raw('COALESCE(roles.name, "Eksternal") as role_name'), DB::raw('count(answers.id) as total'))
+            ->select(
+                DB::raw('COALESCE(roles.name, "Eksternal") as role_name'),
+                DB::raw('COUNT(answers.id) as total')
+            )
             ->groupBy('role_name')
             ->get();
 
-        $latestQuestionnaires = Questionnaire::latest()->take(5)->get(['id', 'name', 'start_date', 'end_date', 'academic_period_id']);
+        // ─── Latest Questionnaires ─────────────────────────────────────────────
+        $latestQuestionnaires = Questionnaire::with('academicPeriod')
+            ->latest()
+            ->take(5)
+            ->get(['id', 'name', 'start_date', 'end_date', 'academic_period_id']);
 
-        $globalSatisfactionTrend = AcademicPeriod::orderBy('name', 'asc')
-            ->get()
-            ->map(function ($period) {
-                // Ambil semua kuesioner di periode ini
-                $questionnaires = Questionnaire::where('academic_period_id', $period->id)->get();
+        // ─── Global Satisfaction Trend (OPTIMIZED) ─────────────────────────────
+        // Semua kalkulasi dilakukan di sisi DB, tidak ada loop PHP yang query lagi
+        $satisfactionRaw = DB::table('answers')
+            ->join('questions', 'answers.question_id', '=', 'questions.id')
+            ->join('questionnaires', 'answers.questionnaire_id', '=', 'questionnaires.id')
+            ->join('academic_periods', 'questionnaires.academic_period_id', '=', 'academic_periods.id')
+            ->joinSub(
+                DB::table('question_options')
+                    ->select('questionnaire_id', DB::raw('MAX(option_value) as max_scale'))
+                    ->groupBy('questionnaire_id'),
+                'qo_max',
+                'answers.questionnaire_id', '=', 'qo_max.questionnaire_id'
+            )
+            ->where('questions.question_type', 'multiple_choice')
+            ->select(
+                'academic_periods.id as period_id',
+                'academic_periods.name as period_name',
+                DB::raw('SUM(answers.answer_value) as total_score'),
+                DB::raw('SUM(qo_max.max_scale) as total_max')
+            )
+            ->groupBy('academic_periods.id', 'academic_periods.name')
+            ->orderBy('academic_periods.name', 'asc')
+            ->get();
 
-                $periodTotalScore       = 0; // Total poin yang didapat user
-                $periodMaxPossibleScore = 0; // Total poin maksimal (jika semua jawab sempurna)
-
-                foreach ($questionnaires as $q) {
-                    // 1. Cari Skala Max kuesioner ini (misal 4 atau 5)
-                    $maxScale = DB::table('question_options')
-                        ->where('questionnaire_id', $q->id)
-                        ->max('option_value');
-
-                    // Default 4 jika belum disetting opsinya
-                    $maxScale = $maxScale ?: 4;
-
-                    // 2. Ambil Total Nilai & Jumlah Jawaban
-                    $stats = DB::table('answers')
-                        ->join('questions', 'answers.question_id', '=', 'questions.id')
-                        ->where('answers.questionnaire_id', $q->id)
-                        ->where('questions.question_type', 'multiple_choice') // Hanya Pilihan Ganda
-                        ->selectRaw('sum(answers.answer_value) as sum_val, count(answers.id) as count_val')
-                        ->first();
-
-                    if ($stats->count_val > 0) {
-                        // Akumulasi ke level Periode
-                        $periodTotalScore       += $stats->sum_val;
-                        $periodMaxPossibleScore += ($stats->count_val * $maxScale);
-                    }
-                }
-
-                // 3. Hitung Persentase Akhir per Periode
-                // Rumus: (Total Skor / Total Max) * 100
-                $finalPercentage = 0;
-                if ($periodMaxPossibleScore > 0) {
-                    $finalPercentage = ($periodTotalScore / $periodMaxPossibleScore) * 100;
-                }
-
+        $globalSatisfactionTrend = $satisfactionRaw
+            ->map(function ($row) {
+                $percentage = $row->total_max > 0
+                    ? round(($row->total_score / $row->total_max) * 100, 1)
+                    : 0;
                 return [
-                    'period_name'   => $period->name,
-                    'average_score' => round($finalPercentage, 1), // Langsung Persen (misal: 76.4)
+                    'period_name'   => $row->period_name,
+                    'average_score' => $percentage,
                 ];
             })
-            ->filter(function ($item) {
-                // Hanya tampilkan periode yang ada datanya (skor > 0)
-                return $item['average_score'] > 0;
-            })
+            ->filter(fn($item) => $item['average_score'] > 0)
             ->values();
 
-        $criteria = SatisfactionCriterion::orderBy('min_value', 'asc')->get();
-
-        $topQuestionnairesStats = Questionnaire::withCount('answers')
-            ->with(['academicPeriod'])
+        // ─── Top Questionnaires Stats (OPTIMIZED) ──────────────────────────────
+        // Ambil 5 kuesioner aktif terbaru
+        $topQuestionnaires = Questionnaire::with('academicPeriod')
             ->where('is_active', true)
             ->latest()
             ->take(5)
+            ->get();
+
+        $topIds = $topQuestionnaires->pluck('id')->toArray();
+
+        // Satu query untuk semua stats sekaligus (tidak per-item)
+        $statsPerQuestionnaire = DB::table('answers')
+            ->join('questions', 'answers.question_id', '=', 'questions.id')
+            ->joinSub(
+                DB::table('question_options')
+                    ->select('questionnaire_id', DB::raw('MAX(option_value) as max_scale'))
+                    ->whereIn('questionnaire_id', $topIds)
+                    ->groupBy('questionnaire_id'),
+                'qo_max',
+                'answers.questionnaire_id', '=', 'qo_max.questionnaire_id'
+            )
+            ->whereIn('answers.questionnaire_id', $topIds)
+            ->where('questions.question_type', 'multiple_choice')
+            ->select(
+                'answers.questionnaire_id',
+                DB::raw('SUM(answers.answer_value) as total_score'),
+                DB::raw('COUNT(answers.id) as total_answers'),
+                DB::raw('MAX(qo_max.max_scale) as max_scale')
+            )
+            ->groupBy('answers.questionnaire_id')
             ->get()
-            ->map(function ($q) use ($criteria) {
-                // 1. Tetap cari Max Scale dinamis kuesioner ini untuk hitung persen
-                $maxScale = DB::table('question_options')
-                    ->where('questionnaire_id', $q->id)
-                    ->max('option_value') ?: 1;
+            ->keyBy('questionnaire_id'); // key by id supaya mudah di-lookup
 
-                // 2. Hitung statistik jawaban
-                $stats = DB::table('answers')
-                    ->join('questions', 'answers.question_id', '=', 'questions.id')
-                    ->where('answers.questionnaire_id', $q->id)
-                    ->where('questions.question_type', 'multiple_choice')
-                    ->selectRaw('sum(answers.answer_value) as total_score, count(answers.id) as total_answers')
-                    ->first();
+        // Total responses per questionnaire (count distinct answers, bukan hanya MC)
+        $totalResponsesPerQ = DB::table('answers')
+            ->whereIn('questionnaire_id', $topIds)
+            ->select('questionnaire_id', DB::raw('COUNT(id) as total'))
+            ->groupBy('questionnaire_id')
+            ->get()
+            ->keyBy('questionnaire_id');
 
-                // 3. Hitung Persentase (Weighted)
-                $percentage = 0;
-                if ($stats->total_answers > 0) {
-                    $percentage = ($stats->total_score / ($stats->total_answers * $maxScale)) * 100;
-                }
-                $percentage = round($percentage, 1);
+        $criteria = SatisfactionCriterion::orderBy('min_value', 'asc')->get();
 
-                // 4. COCOKKAN DENGAN TABEL KRITERIA
-                $matchedCriterion = $criteria->first(function ($c) use ($percentage) {
-                    return $percentage >= $c->min_value && $percentage <= $c->max_value;
-                });
+        $topQuestionnairesStats = $topQuestionnaires->map(function ($q) use ($statsPerQuestionnaire, $totalResponsesPerQ, $criteria) {
+            $stat = $statsPerQuestionnaire->get($q->id);
 
-                return [
-                    'id'              => $q->id,
-                    'name'            => $q->name,
-                    'period'          => $q->academicPeriod->name,
-                    'total_responses' => $q->answers_count,
-                    'percentage'      => $percentage,
-                    // Kirim info kriteria dari database
-                    'label'           => $matchedCriterion ? $matchedCriterion->label : 'N/A',
-                    'color'           => $matchedCriterion ? $matchedCriterion->color : '#6c757d',
-                    'status'          => now()->between($q->start_date, $q->end_date) ? 'Active' : 'Ended',
-                ];
-            });
+            $percentage = 0;
+            if ($stat && $stat->total_answers > 0 && $stat->max_scale > 0) {
+                $percentage = round(($stat->total_score / ($stat->total_answers * $stat->max_scale)) * 100, 1);
+            }
+
+            $matchedCriterion = $criteria->first(fn($c) => $percentage >= $c->min_value && $percentage <= $c->max_value);
+
+            $totalResp = $totalResponsesPerQ->get($q->id);
+
+            return [
+                'id'              => $q->id,
+                'name'            => $q->name,
+                'period'          => $q->academicPeriod->name,
+                'total_responses' => $totalResp ? $totalResp->total : 0,
+                'percentage'      => $percentage,
+                'label'           => $matchedCriterion?->label ?? 'N/A',
+                'color'           => $matchedCriterion?->color ?? '#6c757d',
+                'status'          => now()->between($q->start_date, $q->end_date) ? 'Active' : 'Ended',
+            ];
+        });
 
         return Inertia::render('Dashboard/Admin', [
             'activeRole'                   => $activeRole->name,

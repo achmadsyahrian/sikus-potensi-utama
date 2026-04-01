@@ -1,39 +1,61 @@
 <script setup>
 import { onMounted, computed, ref } from 'vue';
-// Import Utility
-import { getCriterion, calculateQuestionScore } from '@/Utilities/scoringUtils';
+import { getCriterion } from '@/Utilities/scoringUtils';
 
 const props = defineProps({
     question: Object,
     options: Array,
-    answers: Array,
-    criteria: Array, // <--- Terima data kriteria
+    statsData: {
+        type: Array,
+        default: () => []
+    },
+    criteria: Array,
     index: Number
 });
 
 const chartInstance = ref(null);
 const isExporting = ref(false);
 
-// 1. Gunakan Utility untuk menghitung Skor & Kriteria
+const maxScale = computed(() => {
+    return Math.max(...props.options.map(o => Number(o.option_value))) || 4;
+});
+
 const analysis = computed(() => {
-    const stats = calculateQuestionScore(props.answers, props.options);
-    const criterion = getCriterion(stats.percentage, props.criteria);
+    let totalScore = 0;
+    let totalAnswers = 0;
+
+    if (props.statsData && props.statsData.length > 0) {
+        props.statsData.forEach(stat => {
+            totalAnswers += stat.total;
+            totalScore += (Number(stat.answer_value) * stat.total);
+        });
+    }
+
+    const average = totalAnswers > 0 ? (totalScore / totalAnswers) : 0;
+    const percentage = totalAnswers > 0 ? (average / maxScale.value) * 100 : 0;
+    const criterion = getCriterion(percentage, props.criteria);
 
     return {
-        ...stats,
+        totalAnswers,
+        average: average.toFixed(2),
+        percentage: percentage.toFixed(1),
+        maxValue: maxScale.value,
         criterion
     };
 });
 
-// Hitung distribusi opsi (untuk grafik)
 const stats = computed(() => {
-    const total = props.answers.length;
+    const total = analysis.value.totalAnswers;
     const counts = {};
+
     props.options.forEach(opt => counts[opt.option_text] = 0);
-    props.answers.forEach(ans => {
-        const opt = props.options.find(o => o.option_value == ans.answer_value);
-        if (opt) counts[opt.option_text]++;
-    });
+
+    if (props.statsData && props.statsData.length > 0) {
+        props.statsData.forEach(stat => {
+            const opt = props.options.find(o => o.option_value == stat.answer_value);
+            if (opt) counts[opt.option_text] += stat.total;
+        });
+    }
 
     return Object.keys(counts).map(text => ({
         label: text,
@@ -64,7 +86,7 @@ const downloadChart = async () => {
 };
 
 onMounted(() => {
-    const options = {
+    const chartOptions = {
         chart: {
             type: "donut",
             height: 350,
@@ -96,7 +118,7 @@ onMounted(() => {
                             label: 'Total',
                             fontSize: '14px',
                             color: '#64748b',
-                            formatter: () => props.answers.length
+                            formatter: () => analysis.value.totalAnswers
                         }
                     }
                 },
@@ -112,7 +134,7 @@ onMounted(() => {
         }
     };
 
-    chartInstance.value = new ApexCharts(document.getElementById(`chart-q-${props.question.id}`), options);
+    chartInstance.value = new ApexCharts(document.getElementById(`chart-q-${props.question.id}`), chartOptions);
     chartInstance.value.render();
 });
 </script>
@@ -127,7 +149,7 @@ onMounted(() => {
             <button
                 class="btn btn-icon btn-ghost-success border-0 shadow-none"
                 @click="downloadChart"
-                :disabled="isExporting || answers.length === 0"
+                :disabled="isExporting || analysis.totalAnswers === 0"
                 title="Download Chart"
             >
                 <i v-if="isExporting" class="fa-solid fa-spinner fa-spin"></i>
@@ -141,7 +163,6 @@ onMounted(() => {
             </div>
 
             <div class="col-md-7 ps-md-4">
-
                 <div class="d-flex align-items-center mb-4 p-3 bg-light-lt rounded border border-light">
                     <div class="me-3">
                         <div class="display-6 fw-bold text-dark">{{ analysis.percentage }}%</div>

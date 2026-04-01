@@ -2,6 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
+import { capitalizeWords } from '../../Utilities/string';
 
 const props = defineProps({
     questionnaires: Array,
@@ -103,7 +104,7 @@ onMounted(() => {
                     <div class="card-body">
                         <div class="row align-items-center">
                             <div class="col-12 col-md-8">
-                                <h1 class="text-primary">Halo, {{ userName }}!</h1>
+                                <h1 class="text-primary">Halo, {{ capitalizeWords(userName) }}!</h1>
                                 <p class="text-muted fs-3 mb-3">
                                     Selamat datang di <strong>Siku</strong>. Kontribusi Anda sangat berharga bagi peningkatan mutu Universitas Potensi Utama.
                                 </p>

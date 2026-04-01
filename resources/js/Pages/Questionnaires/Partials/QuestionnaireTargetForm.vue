@@ -1,5 +1,5 @@
 <script setup>
-import { defineProps, computed } from 'vue';
+import { defineProps } from 'vue';
 import QuestionnaireRoleTarget from './QuestionnaireRoleTarget.vue';
 import QuestionnaireStudentTarget from './QuestionnaireStudentTarget.vue';
 
@@ -32,7 +32,6 @@ const hasRoleTarget = (roleName) => {
         <div class="card-title text-primary">Penargetan Kuesioner</div>
         <p class="card-subtitle mb-4">Tentukan siapa saja yang dapat mengisi kuesioner ini.</p>
         <div class="row g-3">
-            <!-- Form Target Role -->
             <QuestionnaireRoleTarget
                 :form="form"
                 :roles="roles"
@@ -41,7 +40,6 @@ const hasRoleTarget = (roleName) => {
                 :is-create="isCreate"
             />
 
-            <!-- Form Target Student (hanya jika role mahasiswa terpilih) -->
             <template v-if="hasRoleTarget('Mahasiswa')">
                 <QuestionnaireStudentTarget
                     :form="form"

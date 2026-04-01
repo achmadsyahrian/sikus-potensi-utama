@@ -5,7 +5,7 @@ const props = defineProps({
     searchQuery: String,
     selectedRole: String,
     selectedProdi: String,
-    availableRoles: Array,
+    roles: Array,
     programStudies: Array
 });
 
@@ -25,7 +25,8 @@ const emit = defineEmits(['update:searchQuery', 'update:selectedRole', 'update:s
                             :value="searchQuery"
                             @input="emit('update:searchQuery', $event.target.value)"
                             class="form-control"
-                            placeholder="Nama, NIM, atau NIDN..."
+                            placeholder="Ketik lalu Enter (Nama, NIM...)"
+                            @keyup.enter="emit('update:searchQuery', $event.target.value)"
                         >
                         <span class="input-icon-addon">
                             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
@@ -40,12 +41,18 @@ const emit = defineEmits(['update:searchQuery', 'update:selectedRole', 'update:s
                 </div>
 
                 <div class="col-md-3">
-                    <BaseSelect
-                        label="Peran"
-                        :modelValue="selectedRole"
-                        @update:modelValue="emit('update:selectedRole', $event)"
-                        :options="[{id: 'all', name: 'Semua Peran'}, ...availableRoles.map(r => ({id: r, name: r}))]"
-                    />
+                    <label class="form-label fw-bold text-muted small text-uppercase">Peran</label>
+                    <select class="form-select" :value="selectedRole" @change="emit('update:selectedRole', $event.target.value)">
+                        <option value="all">Semua Peran</option>
+                        <optgroup label="Internal">
+                            <option v-for="r in roles" :key="r.id" :value="r.name">{{ r.name }}</option>
+                        </optgroup>
+                        <optgroup label="Eksternal">
+                            <option value="alumni">Alumni</option>
+                            <option value="mitra">Mitra Kerjasama</option>
+                            <option value="pengguna_lulusan">Pengguna Lulusan</option>
+                        </optgroup>
+                    </select>
                 </div>
 
                 <div class="col-md-5" v-if="selectedRole === 'Mahasiswa' || selectedRole === 'all'">
@@ -55,7 +62,10 @@ const emit = defineEmits(['update:searchQuery', 'update:selectedRole', 'update:s
                         @update:modelValue="emit('update:selectedProdi', $event)"
                         :options="[
                             {id: 'all', name: 'Semua Program Studi'},
-                            ...programStudies.map(p => ({id: p.program_study_code, name: p.name}))
+                            ...programStudies.map(p => ({
+                                id: p.program_study_code,
+                                name: `${p.degree_level} - ${p.name}`
+                            }))
                         ]"
                     />
                 </div>

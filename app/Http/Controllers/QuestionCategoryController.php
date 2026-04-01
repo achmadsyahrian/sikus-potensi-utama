@@ -22,7 +22,7 @@ class QuestionCategoryController extends Controller
         $category->questionnaire_id = $request->questionnaire_id;
         $category->save();
 
-        return redirect()->route('questionnaires.show', $request->questionnaire_id)->with('success', 'Kategori pertanyaan berhasil dibuat.');
+        return redirect()->route('questionnaires.categories', $request->questionnaire_id)->with('success', 'Kategori pertanyaan berhasil dibuat.');
     }
 
     public function update(Request $request, QuestionCategory $category)
@@ -48,7 +48,7 @@ class QuestionCategoryController extends Controller
         $category->order = $request->order;
         $category->save();
 
-        return redirect()->route('questionnaires.show', $category->questionnaire_id)->with('success', 'Kategori pertanyaan berhasil diperbarui.');
+        return redirect()->route('questionnaires.categories', $category->questionnaire_id)->with('success', 'Kategori pertanyaan berhasil diperbarui.');
     }
 
 
@@ -56,6 +56,6 @@ class QuestionCategoryController extends Controller
     {
         $category->delete();
 
-        return redirect()->route('questionnaires.show', $category->questionnaire_id)->with('success', 'Kategori pertanyaan berhasil dihapus.');
+        return redirect()->route('questionnaires.categories', $category->questionnaire_id)->with('success', 'Kategori pertanyaan berhasil dihapus.');
     }
 }

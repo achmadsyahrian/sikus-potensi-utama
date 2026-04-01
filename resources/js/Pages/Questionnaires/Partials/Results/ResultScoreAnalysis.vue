@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, nextTick, watch } from 'vue';
-import { getCriterion, calculateQuestionScore } from '@/Utilities/scoringUtils';
+import { getCriterion } from '@/Utilities/scoringUtils';
+import axios from 'axios';
 
 const props = defineProps({
     questionnaire: Object,
@@ -9,322 +10,243 @@ const props = defineProps({
     roles: Array
 });
 
-const chartInstance = ref(null);
-const isExporting = ref(false);
+const chartInstance  = ref(null);
+const isExporting    = ref(false);
+const isLoading      = ref(false);
 
-// State UI & Filters
-const activeTab = ref('category'); // 'category' | 'prodi'
-const selectedCategoryFilter = ref('all'); // Filter Aspek (utk Mode Banding Prodi)
-const selectedRoleFilter = ref('all');     // Filter Role (utk Tab Aspek)
-const selectedProdiFilter = ref('all');    // NEW: Filter Prodi Spesifik
+const activeTab              = ref('category');
+const selectedCategoryFilter = ref('all');
+const selectedRoleFilter     = ref('all');
+const selectedProdiFilter    = ref('all');
 
-// 1. Helper Max Option
-const maxOptionValue = computed(() => {
-    if (!props.questionnaire.options || props.questionnaire.options.length === 0) return 0;
-    return Math.max(...props.questionnaire.options.map(o => o.option_value));
-});
+const categoryStats = ref([]);
+const prodiStats    = ref([]);
+const globalScore   = ref(0);
 
-// 2. DATA CHART: Hitung Skor Per Kategori (Tab Analisis Aspek)
-const categoryStats = computed(() => {
-    return props.questionnaire.categories.map(category => {
-        const questions = props.questionnaire.questions.filter(q => q.category_id === category.id && q.question_type === 'multiple_choice');
-        if (questions.length === 0) return null;
-
-        let totalPercent = 0;
-        let count = 0;
-
-        questions.forEach(q => {
-            let answers = props.questionnaire.answers.filter(a => a.question_id === q.id);
-            // Filter Role
-            if (selectedRoleFilter.value !== 'all') {
-                if (['alumni', 'mitra', 'pengguna_lulusan'].includes(selectedRoleFilter.value)) {
-                     answers = answers.filter(a => a.respondent_external?.role === selectedRoleFilter.value);
-                } else if (selectedRoleFilter.value === 'external_all') {
-                     answers = answers.filter(a => a.respondent_external_id !== null);
-                } else {
-                    answers = answers.filter(a => a.role_id == selectedRoleFilter.value);
-                }
-            }
-            const qStats = calculateQuestionScore(answers, props.questionnaire.options);
-            if (answers.length > 0) {
-                totalPercent += parseFloat(qStats.percentage);
-                count++;
-            }
-        });
-
-        if (count === 0) return null;
-        const finalScore = totalPercent / count;
-
-        return {
-            name: category.name,
-            score: parseFloat(finalScore.toFixed(1)),
-            criterion: getCriterion(finalScore, props.criteria)
-        };
-    }).filter(Boolean);
-});
-
-// 3. DATA CHART: Hitung Skor Per Prodi (Tab Analisis Prodi)
-const prodiStats = computed(() => {
-    if (maxOptionValue.value === 0) return [];
-    const mhsRole = props.roles.find(r => r.name.toLowerCase() === 'mahasiswa');
-    if (!mhsRole) return [];
-
-    // --- MODE A: DETAIL PRODI (Jika Filter Prodi Dipilih) ---
-    // Tampilkan Skor Per KATEGORI untuk Prodi tersebut
-    if (selectedProdiFilter.value !== 'all') {
-        return props.questionnaire.categories.map(category => {
-            const questions = props.questionnaire.questions.filter(q => q.category_id === category.id && q.question_type === 'multiple_choice');
-            if (questions.length === 0) return null;
-
-            let totalPercent = 0;
-            let count = 0;
-
-            questions.forEach(q => {
-                // Ambil jawaban: Role Mahasiswa AND Prodi Code Cocok AND Question ID Cocok
-                const answers = props.questionnaire.answers.filter(a =>
-                    a.question_id === q.id &&
-                    a.role_id === mhsRole.id &&
-                    String(a.user?.student_detail?.program_study_code) === String(selectedProdiFilter.value)
-                );
-
-                const qStats = calculateQuestionScore(answers, props.questionnaire.options);
-                if (answers.length > 0) {
-                    totalPercent += parseFloat(qStats.percentage);
-                    count++;
-                }
-            });
-
-            if (count === 0) return null;
-            const finalScore = totalPercent / count;
-
-            return {
-                name: category.name, // Label Chart = Nama Kategori
-                score: parseFloat(finalScore.toFixed(1)),
-                criterion: getCriterion(finalScore, props.criteria)
-            };
-        }).filter(Boolean);
-    }
-
-    // --- MODE B: BANDING SEMUA PRODI (Jika Filter Prodi = All) ---
-    // Tampilkan Skor Per PRODI (bisa difilter aspek tertentu)
-    let validQuestionIds = [];
-    if (selectedCategoryFilter.value === 'all') {
-        validQuestionIds = props.questionnaire.questions.map(q => q.id);
-    } else {
-        validQuestionIds = props.questionnaire.questions
-            .filter(q => q.category_id == selectedCategoryFilter.value)
-            .map(q => q.id);
-    }
-
-    const mhsAnswers = props.questionnaire.answers.filter(a =>
-        a.role_id === mhsRole.id &&
-        a.user?.student_detail?.program_study_code &&
-        validQuestionIds.includes(a.question_id)
-    );
-
-    const groups = {};
-    mhsAnswers.forEach(ans => {
-        const code = ans.user.student_detail.program_study_code;
-        if (!groups[code]) groups[code] = { sumPercent: 0, count: 0 };
-        const val = parseInt(ans.answer_value || 0);
-        const pct = (val / maxOptionValue.value) * 100;
-        groups[code].sumPercent += pct;
-        groups[code].count++;
-    });
-
-    return Object.keys(groups).map(code => {
-        const prodi = props.programStudies.find(p => String(p.program_study_code) === String(code));
-        const prodiName = prodi ? prodi.name : `Prodi: ${code}`;
-        const finalScore = groups[code].sumPercent / groups[code].count;
-
-        return {
-            name: prodiName, // Label Chart = Nama Prodi
-            score: parseFloat(finalScore.toFixed(1)),
-            criterion: getCriterion(finalScore, props.criteria)
-        };
-    });
-});
-
-// 4. Data Aktif
 const activeStats = computed(() => {
     return activeTab.value === 'prodi' ? prodiStats.value : categoryStats.value;
 });
 
-// 5. Global Score (Updated Logic)
 const overallStats = computed(() => {
-    if (maxOptionValue.value === 0) return { score: 0, criterion: { label: '-', color: '#ccc' } };
-
-    let relevantAnswers = [];
-
-    if (activeTab.value === 'category') {
-        // ... (Logic Tab Category Tetap Sama) ...
-        relevantAnswers = props.questionnaire.answers.filter(a => {
-            const q = props.questionnaire.questions.find(qu => qu.id === a.question_id);
-            if (!q || q.question_type !== 'multiple_choice') return false;
-            if (selectedRoleFilter.value !== 'all') {
-                 if (['alumni', 'mitra', 'pengguna_lulusan'].includes(selectedRoleFilter.value)) {
-                    return a.respondent_external?.role === selectedRoleFilter.value;
-                } else if (selectedRoleFilter.value === 'external_all') {
-                     return a.respondent_external_id !== null;
-                } else {
-                    return a.role_id == selectedRoleFilter.value;
-                }
-            }
-            return true;
-        });
-
-    } else {
-        // --- Filter TAB PRODI ---
-        const mhsRole = props.roles.find(r => r.name.toLowerCase() === 'mahasiswa');
-        if (!mhsRole) return { score: 0, criterion: { label: '-', color: '#ccc' } };
-
-        // Logic Filter Pertanyaan
-        let validQuestionIds = [];
-        // Jika Prodi Spesifik dipilih, kita ambil SEMUA kategori (karena chart menampilkan kategori)
-        // Jika Semua Prodi dipilih, kita cek filter kategori
-        if (selectedProdiFilter.value !== 'all' || selectedCategoryFilter.value === 'all') {
-             validQuestionIds = props.questionnaire.questions.map(q => q.id);
-        } else {
-            validQuestionIds = props.questionnaire.questions
-                .filter(q => q.category_id == selectedCategoryFilter.value)
-                .map(q => q.id);
-        }
-
-        relevantAnswers = props.questionnaire.answers.filter(a => {
-            const isMhs = a.role_id === mhsRole.id;
-            const hasProdi = a.user?.student_detail?.program_study_code;
-            const isValidQ = validQuestionIds.includes(a.question_id);
-
-            // Cek Filter Prodi Spesifik
-            let isProdiMatch = true;
-            if (selectedProdiFilter.value !== 'all') {
-                isProdiMatch = String(a.user?.student_detail?.program_study_code) === String(selectedProdiFilter.value);
-            }
-
-            return isMhs && hasProdi && isValidQ && isProdiMatch;
-        });
-    }
-
-    if (relevantAnswers.length === 0) {
-        return { score: 0, criterion: { label: '-', color: '#ccc' } };
-    }
-
-    const sumValues = relevantAnswers.reduce((sum, a) => sum + parseInt(a.answer_value || 0), 0);
-    const finalScore = (sumValues / (relevantAnswers.length * maxOptionValue.value)) * 100;
-
     return {
-        score: finalScore.toFixed(1),
-        criterion: getCriterion(finalScore, props.criteria)
+        score:     globalScore.value,
+        criterion: getCriterion(globalScore.value, props.criteria)
     };
 });
 
+// ── Fetch dari API ─────────────────────────────────────────────────────────
+const fetchAnalysis = async () => {
+    isLoading.value = true;
+    try {
+        const { data } = await axios.get(route('questionnaires.analysis', props.questionnaire.id), {
+            params: {
+                tab:      activeTab.value,
+                role:     selectedRoleFilter.value,
+                prodi:    selectedProdiFilter.value,
+                category: selectedCategoryFilter.value,
+            }
+        });
+        categoryStats.value = data.categoryStats;
+        prodiStats.value    = data.prodiStats;
+        globalScore.value   = data.globalScore;
+    } catch (e) {
+        console.error('fetchAnalysis error:', e);
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+// ── Render Chart ───────────────────────────────────────────────────────────
 const renderChart = async () => {
     await nextTick();
     const chartEl = document.getElementById('analysis-chart');
     if (!chartEl) return;
     if (chartInstance.value) chartInstance.value.destroy();
-
     if (activeStats.value.length === 0) return;
 
     const palette = ['#206bc4', '#2fb344', '#f76707', '#ae3ec9', '#d63939', '#4299e1', '#17a2b8', '#ffc107', '#1e293b'];
 
-    const options = {
-        series: activeStats.value.map(c => c.score),
-        labels: activeStats.value.map(c => c.name),
+    const dynamicHeight = Math.max(400, (activeStats.value.length * 60) + 100);
+
+    chartInstance.value = new ApexCharts(chartEl, {
+        series: [{
+            name: 'Indeks Kepuasan',
+            data: activeStats.value.map(c => c.score)
+        }],
         chart: {
-            type: 'polarArea',
-            height: 380,
+            type: 'bar',
+            height: dynamicHeight,
+            width: '100%',
             fontFamily: 'inherit',
-            animations: { enabled: true },
-            toolbar: { show: false }
+            toolbar: { show: false },
+            parentHeightOffset: 0,
+        },
+        plotOptions: {
+            bar: {
+                horizontal: true,
+                borderRadius: 4,
+                distributed: true,
+                dataLabels: {
+                    position: 'bottom'
+                }
+            }
         },
         colors: activeStats.value.map((_, i) => palette[i % palette.length]),
-        fill: { opacity: 0.9 },
-        stroke: { width: 1, colors: ['#fff'] },
-        yaxis: { show: false },
-        legend: { position: 'bottom', fontSize: '12px' },
-        plotOptions: { polarArea: { rings: { strokeWidth: 0 }, spokes: { strokeWidth: 0 } } },
-        tooltip: {
-            theme: 'light',
-            y: { formatter: (val) => val + "%" }
-        },
+
         dataLabels: {
             enabled: true,
-            formatter: function (val, opts) {
-                const index = opts.seriesIndex;
-                const stat = activeStats.value[index];
-                return `${stat.criterion.label} (${stat.score}%)`;
+            textAnchor: 'start',
+            style: {
+                colors: ['#fff'],
+                fontWeight: 'bold',
+                fontSize: '12px'
             },
-            style: { colors: ['#333'], fontWeight: 'bold', fontSize: '10px' },
-            background: { enabled: true, foreColor: '#fff', borderRadius: 2, opacity: 0.8 }
-        }
-    };
+            formatter: function (val) {
+                const criterion = getCriterion(val, props.criteria);
+                const label = criterion ? criterion.label : 'N/A';
+                return `${val}% — ${label}`;
+            },
+            offsetX: 10,
+            dropShadow: { enabled: true, top: 1, left: 1, blur: 1, color: '#000', opacity: 0.4 }
+        },
 
-    chartInstance.value = new ApexCharts(chartEl, options);
+        xaxis: {
+            categories: activeStats.value.map(c => c.name),
+            max: 100,
+            labels: {
+                formatter: function (val) { return val + "%" }
+            }
+        },
+        yaxis: {
+            labels: {
+                show: true,
+                maxWidth: 250,
+                style: {
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    colors: '#1e293b'
+                },
+                formatter: function (val) {
+                    if (val && val.length > 35) {
+                        const match = val.match(/.{1,35}(\s|$)/g);
+                        return match ? match.map(s => s.trim()) : val;
+                    }
+                    return val;
+                }
+            }
+        },
+        tooltip: {
+            theme: 'light',
+            y: {
+                formatter: function (val) {
+                    const criterion = getCriterion(val, props.criteria);
+                    const label = criterion ? criterion.label : 'N/A';
+                    return `${val}% (${label})`;
+                }
+            }
+        },
+        legend: { show: false },
+
+        responsive: [
+            {
+                breakpoint: 768,
+                options: {
+                    yaxis: {
+                        labels: {
+                            maxWidth: 120,
+                            style: { fontSize: '10px' },
+                            formatter: function (val) {
+                                if (val && val.length > 15) {
+                                    const match = val.match(/.{1,15}(\s|$)/g);
+                                    return match ? match.map(s => s.trim()) : val;
+                                }
+                                return val;
+                            }
+                        }
+                    },
+                    dataLabels: {
+                        style: { fontSize: '10px' }
+                    }
+                }
+            }
+        ]
+    });
+
     chartInstance.value.render();
 };
 
+// ── Download Chart ─────────────────────────────────────────────────────────
 const downloadChart = async () => {
     if (!chartInstance.value) return;
     isExporting.value = true;
     try {
         await chartInstance.value.updateOptions({ chart: { animations: { enabled: false } } });
         const { imgURI } = await chartInstance.value.dataURI({ scale: 2 });
-        const link = document.createElement('a');
-        link.href = imgURI;
 
         let filename = `Analisis-${activeTab.value}`;
         if (activeTab.value === 'category') {
-             // ... logic nama file role ...
-             let roleName = 'Semua';
-             if (selectedRoleFilter.value !== 'all') {
+            let roleName = 'Semua';
+            if (selectedRoleFilter.value !== 'all') {
                 if (selectedRoleFilter.value === 'external_all') roleName = 'Semua-Eksternal';
                 else if (['alumni', 'mitra', 'pengguna_lulusan'].includes(selectedRoleFilter.value)) roleName = selectedRoleFilter.value;
                 else roleName = props.roles.find(r => r.id == selectedRoleFilter.value)?.name || 'Internal';
-             }
+            }
             filename += `-${roleName}`;
         } else {
-             // Logic nama file Prodi
-             if (selectedProdiFilter.value !== 'all') {
-                 const pName = props.programStudies.find(p => String(p.program_study_code) === String(selectedProdiFilter.value))?.name || 'Prodi';
-                 filename += `-Detail_${pName}`;
-             } else {
-                 const catName = props.questionnaire.categories.find(c => c.id == selectedCategoryFilter.value)?.name || 'Semua-Aspek';
-                 filename += `-Banding_${catName}`;
-             }
+            if (selectedProdiFilter.value !== 'all') {
+                const p = props.programStudies.find(p => String(p.program_study_code) === String(selectedProdiFilter.value));
+                filename += `-Detail_${p ? p.name : 'Prodi'}`;
+            } else {
+                const cat = props.questionnaire.categories.find(c => c.id == selectedCategoryFilter.value);
+                filename += `-Banding_${cat ? cat.name : 'Semua-Aspek'}`;
+            }
         }
 
+        const link = document.createElement('a');
+        link.href     = imgURI;
         link.download = `${filename}.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
         await chartInstance.value.updateOptions({ chart: { animations: { enabled: true } } });
-    } catch (e) { console.error(e); }
-    finally { isExporting.value = false; }
+    } catch (e) {
+        console.error(e);
+    } finally {
+        isExporting.value = false;
+    }
 };
 
+// ── Label Helpers ──────────────────────────────────────────────────────────
 const getRoleLabel = () => {
-    if (selectedRoleFilter.value === 'all') return 'Semua Responden';
-    if (selectedRoleFilter.value === 'external_all') return 'Semua Pihak Luar';
-    if (selectedRoleFilter.value === 'alumni') return 'Alumni';
-    if (selectedRoleFilter.value === 'mitra') return 'Mitra Kerjasama';
+    if (selectedRoleFilter.value === 'all')           return 'Semua Responden';
+    if (selectedRoleFilter.value === 'external_all')  return 'Semua Pihak Luar';
+    if (selectedRoleFilter.value === 'alumni')        return 'Alumni';
+    if (selectedRoleFilter.value === 'mitra')         return 'Mitra Kerjasama';
     if (selectedRoleFilter.value === 'pengguna_lulusan') return 'Pengguna Lulusan';
     return props.roles.find(r => r.id == selectedRoleFilter.value)?.name || 'Internal';
 };
 
-// Helper Label Prodi
 const getProdiLabel = () => {
     if (selectedProdiFilter.value !== 'all') {
         const p = props.programStudies.find(p => String(p.program_study_code) === String(selectedProdiFilter.value));
-        return `Detail Prodi: ${p ? p.name : ''}`;
+        return `Detail Prodi: ${p ? `${p.degree_level} - ${p.name}` : ''}`;
     }
     const cat = props.questionnaire.categories.find(c => c.id == selectedCategoryFilter.value);
     return `Perbandingan Prodi (Aspek: ${cat ? cat.name : 'Semua'})`;
-}
+};
 
-onMounted(() => renderChart());
-// Tambahkan selectedProdiFilter ke watcher
-watch([activeStats, activeTab, selectedCategoryFilter, selectedRoleFilter, selectedProdiFilter], () => renderChart());
+// ── Watchers ───────────────────────────────────────────────────────────────
+// Fetch ulang saat filter berubah, lalu render chart
+watch([activeTab, selectedRoleFilter, selectedProdiFilter, selectedCategoryFilter], async () => {
+    await fetchAnalysis();
+    await renderChart();
+});
+
+onMounted(async () => {
+    await fetchAnalysis();
+    await renderChart();
+});
 </script>
 
 <template>
@@ -409,7 +331,7 @@ watch([activeStats, activeTab, selectedCategoryFilter, selectedRoleFilter, selec
                                 <select v-model="selectedProdiFilter" class="form-select form-select-sm" style="width: 180px;">
                                     <option value="all">Semua (Bandingkan)</option>
                                     <option v-for="p in programStudies" :key="p.id" :value="p.program_study_code">
-                                        {{ p.name }}
+                                        {{ p.degree_level }} - {{ p.name }}
                                     </option>
                                 </select>
                             </div>
@@ -439,7 +361,7 @@ watch([activeStats, activeTab, selectedCategoryFilter, selectedRoleFilter, selec
 
                     <div class="p-3">
                         <div v-if="activeStats.length > 0">
-                            <div id="analysis-chart" style="min-height: 380px;"></div>
+                            <div id="analysis-chart" class="w-100"></div>
                         </div>
                         <div v-else class="text-center py-5 text-muted bg-light rounded border border-dashed m-3">
                             <i class="fa-solid fa-chart-simple fa-2x mb-2 d-block text-secondary"></i>

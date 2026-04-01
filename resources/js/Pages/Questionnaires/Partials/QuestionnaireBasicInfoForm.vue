@@ -3,11 +3,11 @@ import BaseInput from '@/Components/BaseInput.vue';
 import BaseSelect from '@/Components/BaseSelect.vue';
 import { computed } from 'vue';
 import { formatIndonesianDate } from '@/Utilities/dateFormatter.js';
-import BaseAlert from '@/Components/BaseAlert.vue'; // BARU: Impor BaseAlert
+import BaseAlert from '@/Components/BaseAlert.vue';
 
 const props = defineProps({
     form: Object,
-    questionnaire: Object, // BARU: Tambahkan prop questionnaire
+    questionnaire: Object,
     academicPeriods: Array,
     isDisabled: {
         type: Boolean,
@@ -51,11 +51,10 @@ const isActiveComputed = computed({
 });
 
 const academicPeriodName = computed(() => {
-    const period = props.academicPeriods.find(p => p.id === props.form.academic_period_id);
+    const period = props.academicPeriods.find(p => String(p.id) === String(props.form.academic_period_id));
     return period ? period.name : 'Tidak ditemukan';
 });
 
-// BARU: Computed property untuk mengecek apakah kuesioner siap diaktifkan
 const canBeActivated = computed(() => {
     if (!props.questionnaire) {
         return false;
@@ -63,7 +62,6 @@ const canBeActivated = computed(() => {
     return props.questionnaire.questions.length > 0 && props.questionnaire.options.length > 0;
 });
 
-// BARU: Computed property untuk pesan peringatan
 const activationWarning = computed(() => {
     if (!props.questionnaire) {
         return 'Data kuesioner belum lengkap.';
@@ -132,7 +130,6 @@ const activationWarning = computed(() => {
             <div class="col-12 mt-4">
                 <h5 class="card-title text-primary" v-if="!isCreate">Status Kuesioner</h5>
                 <template v-if="isEditing">
-                    <!-- <BaseAlert v-if="!canBeActivated && !form.is_active" type="warning" :message="activationWarning" class="mb-3" /> -->
                     <p v-if="!canBeActivated && !form.is_active" class="text-danger fs-5">{{ activationWarning }}</p>
 
                     <div class="form-check form-switch d-inline-block">

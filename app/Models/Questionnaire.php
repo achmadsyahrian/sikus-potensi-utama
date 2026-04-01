@@ -22,7 +22,7 @@ class Questionnaire extends Model
         'public_link_token',
     ];
 
-    protected $with = ['academicPeriod', 'targets', 'categories', 'options', 'questions', 'answers'];
+    protected $with = ['academicPeriod', 'targets', 'categories', 'options', 'questions'];
 
     protected $appends = [
         'formatted_start_date',

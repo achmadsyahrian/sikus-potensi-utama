@@ -1,45 +1,17 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm, Link } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
-import QuestionnaireForm from './Partials/QuestionnaireForm.vue';
-import BaseAlert from '@/Components/BaseAlert.vue';
+import { Head, Link } from '@inertiajs/vue3';
+import QuestionnaireOptionTable from './Partials/QuestionnaireOptionTable.vue';
+import QuestionnaireInfoCard from './Partials/QuestionnaireInfoCard.vue';
 
 const props = defineProps({
     questionnaire: Object,
-    roles: Array,
-    academicPeriods: Array,
-    faculties: Array,
-    programStudies: Array,
+    questionOptions: Array,
 });
-
-const hasAnswers = computed(() => props.questionnaire.total_answers > 0);
-
-const form = useForm({
-    id: props.questionnaire.id,
-    name: props.questionnaire.name,
-    description: props.questionnaire.description,
-    academic_period_id: props.questionnaire.academic_period_id,
-    is_active: props.questionnaire.is_active,
-    start_date: props.questionnaire.start_date,
-    end_date: props.questionnaire.end_date,
-    targets: props.questionnaire.targets.map(t => ({
-        target_type: t.target_type,
-        target_value: t.target_value
-    })),
-});
-
-const isEditing = ref(false);
-
-const update = () => {
-    form.put(route('questionnaires.update', props.questionnaire.id), {
-        onSuccess: () => { isEditing.value = false; }
-    });
-};
 </script>
 
 <template>
-    <Head :title="`Detail Kuesioner: ${questionnaire.name}`" />
+    <Head :title="`Opsi Jawaban Kuesioner: ${questionnaire.name}`" />
     <AuthenticatedLayout>
         <template #header>
             <div class="row g-2 align-items-center">
@@ -59,16 +31,12 @@ const update = () => {
             </div>
         </template>
 
-        <BaseAlert v-if="!hasAnswers" type="warning" title="Mode Edit Terbuka"
-            message="Kuesioner ini belum memiliki jawaban. Anda masih dapat mengubah struktur pertanyaan, opsi, dan kategori."
-            class="mb-4" />
-
         <div class="card">
             <div class="card-header">
                 <ul class="nav nav-tabs card-header-tabs flex-nowrap overflow-auto custom-scrollbar">
                     <li class="nav-item">
-                        <Link :href="route('questionnaires.show', questionnaire.id)" class="nav-link active fw-bold text-nowrap">
-                            <i class="fa-solid fa-circle-info me-2"></i> Info Dasar
+                        <Link :href="route('questionnaires.show', questionnaire.id)" class="nav-link text-nowrap">
+                            <i class="fa-solid fa-circle-info me-2" style="opacity: 0.6"></i> Info Dasar
                         </Link>
                     </li>
                     <li class="nav-item">
@@ -77,8 +45,8 @@ const update = () => {
                         </Link>
                     </li>
                     <li class="nav-item">
-                        <Link :href="route('questionnaires.options', questionnaire.id)" class="nav-link text-nowrap">
-                            <i class="fa-solid fa-list-check me-2" style="opacity: 0.6"></i> Opsi Jawaban
+                        <Link :href="route('questionnaires.options', questionnaire.id)" class="nav-link active fw-bold text-nowrap">
+                            <i class="fa-solid fa-list-check me-2"></i> Opsi Jawaban
                         </Link>
                     </li>
                     <li class="nav-item">
@@ -99,11 +67,19 @@ const update = () => {
                 </ul>
             </div>
 
-            <div>
-                <QuestionnaireForm
-                    :form="form" :questionnaire="questionnaire" :roles="roles" :academicPeriods="academicPeriods"
-                    :faculties="faculties" :programStudies="programStudies" @submit="update"
-                    :is-disabled="!isEditing" :is-editing="isEditing" @edit-toggle="isEditing = !isEditing"
+            <div class="card-body">
+                <QuestionnaireInfoCard :questionnaire="questionnaire" />
+
+                <div class="d-flex align-items-center justify-content-between pt-2 pb-4">
+                    <div>
+                        <h3 class="fw-bold mb-1">Manajemen Opsi</h3>
+                        <h5 class="op-7 mb-2 text-muted">Kelola opsi jawaban yang dapat digunakan kembali untuk pertanyaan kuesioner.</h5>
+                    </div>
+                </div>
+
+                <QuestionnaireOptionTable
+                    :questionnaire="questionnaire"
+                    :questionOptions="questionOptions"
                 />
             </div>
         </div>
