@@ -44,7 +44,7 @@ class QuestionnaireController extends Controller
             $query->where('academic_period_id', $request->period);
         }
 
-        $questionnaires = $query->latest()->paginate(10)->withQueryString();
+        $questionnaires = $query->latest()->paginate(15)->withQueryString();
 
         $academicPeriods = \App\Models\AcademicPeriod::orderBy('name', 'desc')->get(['id', 'name']);
 
@@ -232,6 +232,21 @@ class QuestionnaireController extends Controller
 
         $chartStats = $internalRolesCount->concat($externalRolesCount);
 
+        $prodiStats = DB::table('answers')
+            ->join('users', 'answers.user_id', '=', 'users.id')
+            ->join('student_details', 'users.id', '=', 'student_details.user_id')
+            ->join('program_studies', 'student_details.program_study_code', '=', 'program_studies.program_study_code')
+            ->where('answers.questionnaire_id', $questionnaire->id)
+            ->whereNotNull('answers.user_id')
+            ->select(
+                'program_studies.name as prodi_name',
+                'program_studies.degree_level',
+                DB::raw('COUNT(DISTINCT answers.user_id) as total')
+            )
+            ->groupBy('program_studies.program_study_code', 'program_studies.name', 'program_studies.degree_level')
+            ->orderByDesc('total')
+            ->get();
+
         $internalQuery = DB::table('answers')
             ->join('users', 'answers.user_id', '=', 'users.id')
             ->leftJoin('roles', 'answers.role_id', '=', 'roles.id')
@@ -299,6 +314,7 @@ class QuestionnaireController extends Controller
             'questionnaire' => $questionnaire,
             'respondents'   => $searchResults,
             'chartStats'    => $chartStats,
+            'prodiStats'    => $prodiStats,
             'filters'       => [
                 'search' => $search,
                 'role'   => $roleFilter,

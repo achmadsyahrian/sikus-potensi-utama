@@ -14,6 +14,7 @@ const props = defineProps({
     programStudies: Array,
     roles: Array,
     chartStats: Array,
+    prodiStats: Array,
     filters: Object
 });
 
@@ -109,7 +110,7 @@ const handleExportExcel = () => {
             <div class="card-body" v-if="!isShowingDetail">
                 <QuestionnaireInfoCard :questionnaire="questionnaire" />
 
-                <RespondentSummary :chartStats="chartStats" />
+                <RespondentSummary :chartStats="chartStats" :prodiStats="prodiStats" />
 
                 <RespondentFilter
                     v-model:searchQuery="searchQuery"

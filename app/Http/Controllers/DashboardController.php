@@ -153,7 +153,7 @@ class DashboardController extends Controller
         // ─── Top Questionnaires Stats (OPTIMIZED) ──────────────────────────────
         // Ambil 5 kuesioner aktif terbaru
         $topQuestionnaires = Questionnaire::with('academicPeriod')
-            ->where('is_active', true)
+            // ->where('is_active', true)
             ->latest()
             ->take(5)
             ->get();
