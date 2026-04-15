@@ -17,6 +17,7 @@ class Answer extends Model
         'answer_value',
         'role_id',
         'respondent_external_id',
+        'lecturer_program_study_code',
     ];
 
     public function user(): BelongsTo

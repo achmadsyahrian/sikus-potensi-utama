@@ -1,11 +1,8 @@
 <?php
-
 namespace App\Services\Sevima;
 
 use App\Models\LecturerDetail;
 use App\Models\User;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class LecturerService extends BaseService
 {
@@ -21,20 +18,26 @@ class LecturerService extends BaseService
         return $response->successful() ? $response->json() : null;
     }
 
+    public static function fetchLecturerSchedule(string $lecturerId, string $periodId, array $params = []): ?array
+    {
+        $response = self::makeRequest("dosen/{$lecturerId}/jadwal", array_merge(['f-id_periode' => $periodId], $params));
+        return $response->successful() ? $response->json() : null;
+    }
+
     public function syncLecturer(User $user, array $sevimaData): LecturerDetail
     {
-        $sevimaData = $sevimaData['attributes'] ?? $sevimaData;
-        $nidn = data_get($sevimaData, 'nidn');
-        $workUnit = data_get($sevimaData, 'satuan_kerja') ?? null;
+        $sevimaId = data_get($sevimaData, 'id');
+        $sevimaData         = $sevimaData['attributes'] ?? $sevimaData;
+        $nidn               = data_get($sevimaData, 'nidn');
+        $workUnit           = data_get($sevimaData, 'satuan_kerja') ?? null;
         $functionalPosition = data_get($sevimaData, 'jabatan_fungsional') ?? null;
-
-        $nidn = !empty($nidn) ? $nidn : null;
-        $workUnit = !empty($workUnit) ? $workUnit : null;
+        $nidn     = ! empty($nidn) ? $nidn : null;
+        $workUnit = ! empty($workUnit) ? $workUnit : null;
 
         $lecturerDetail = LecturerDetail::updateOrCreate(
-            ['user_id' => $user->id, 'nidn' => $nidn],
+            ['user_id' => $user->id, 'nidn' => $nidn, 'sevima_id' => $sevimaId],
             [
-                'work_unit' => $workUnit,
+                'work_unit'           => $workUnit,
                 'functional_position' => $functionalPosition,
             ]
         );

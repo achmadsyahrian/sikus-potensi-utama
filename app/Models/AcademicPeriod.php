@@ -14,13 +14,14 @@ class AcademicPeriod extends Model
         'start_date',
         'end_date',
         'is_active',
-        'last_synced_at'
+        'last_synced_at',
+        'sevima_id',
     ];
-    
+
     protected $casts = [
         'is_active' => 'boolean',
     ];
-    
+
     protected $appends = [
         'formatted_last_synced_at',
         'formatted_start_date',

@@ -12,6 +12,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Cache;
+use App\Services\Sevima\LecturerService;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -153,7 +155,7 @@ class DashboardController extends Controller
         // ─── Top Questionnaires Stats (OPTIMIZED) ──────────────────────────────
         // Ambil 5 kuesioner aktif terbaru
         $topQuestionnaires = Questionnaire::with('academicPeriod')
-            // ->where('is_active', true)
+        // ->where('is_active', true)
             ->latest()
             ->take(5)
             ->get();
@@ -246,18 +248,26 @@ class DashboardController extends Controller
         $user   = $request->user();
         $userId = $user->id;
 
-        $questionnaires = Questionnaire::query()
-            ->with('targets')
+        $questionnaires = $this->getUserQuestionnaires($user, $activeRole, $userId);
+
+        return match ($activeRole->slug) {
+            'dosen'     => $this->dosenIndex($request, $activeRole, $user, $questionnaires),
+            'mahasiswa' => $this->mahasiswaIndex($request, $activeRole, $user, $questionnaires),
+            default     => $this->pegawaiIndex($request, $activeRole, $user, $questionnaires),
+        };
+    }
+    private function getUserQuestionnaires($user, $activeRole, $userId)
+    {
+        return Questionnaire::query()
+            ->with(['targets', 'academicPeriod'])
             ->where('is_active', true)
             ->where(function ($q) use ($activeRole, $user) {
-                // Logika untuk peran Dosen, Pegawai, dll.
                 if ($activeRole->name !== 'Mahasiswa') {
                     $q->whereHas('targets', function ($subQuery) use ($activeRole) {
                         $subQuery->where('target_type', 'role')
                             ->where('target_value', $activeRole->name);
                     });
                 } else {
-                    // Logika khusus untuk Mahasiswa
                     $q->whereHas('targets', function ($subQuery) use ($user) {
                         $studentDetails = $user->studentDetail;
                         $programStudyId = null;
@@ -272,68 +282,157 @@ class DashboardController extends Controller
                                     if ($faculty) {
                                         $facultyId = (string) $faculty->id;
                                     }
+
                                 }
                             }
                         }
 
                         $subQuery->where(function ($innerQuery) use ($programStudyId, $facultyId) {
-                            // Target untuk peran mahasiswa
-                            // $innerQuery->orWhere(function ($q) {
-                            //     $q->where('target_type', 'role')
-                            //     ->where('target_value', 'Mahasiswa');
-                            // });
-
-                            // Target untuk program studi
                             if ($programStudyId) {
-                                $innerQuery->orWhere(function ($q) use ($programStudyId) {
-                                    $q->where('target_type', 'program_study')
-                                        ->where('target_value', $programStudyId);
-                                });
+                                $innerQuery->orWhere(fn($q) => $q->where('target_type', 'program_study')->where('target_value', $programStudyId));
                             }
-
-                            // Target untuk fakultas
                             if ($facultyId) {
-                                $innerQuery->orWhere(function ($q) use ($facultyId) {
-                                    $q->where('target_type', 'faculty')
-                                        ->where('target_value', $facultyId);
-                                });
+                                $innerQuery->orWhere(fn($q) => $q->where('target_type', 'faculty')->where('target_value', $facultyId));
                             }
-
-                            // Target untuk semua
                             $innerQuery->orWhereIn('target_type', ['university', 'all']);
                         });
                     });
                 }
             })
             ->get();
+    }
 
-        $completedQuestionnairesCount   = 0;
-        $uncompletedQuestionnairesCount = 0;
+    private function buildQuestionnaireStats($questionnaires, $userId)
+    {
+        $activeRoleId = Session::get('active_role_id');
+        $completed    = 0;
+        $uncompleted  = 0;
 
-        $questionnaires = $questionnaires->map(function ($questionnaire) use ($userId, &$completedQuestionnairesCount, &$uncompletedQuestionnairesCount) {
+        $mapped = $questionnaires->map(function ($q) use ($userId, $activeRoleId, &$completed, &$uncompleted) {
             $hasAnswered = DB::table('answers')
                 ->where('user_id', $userId)
-                ->where('questionnaire_id', $questionnaire->id)
-                ->where('role_id', Session::get('active_role_id'))
+                ->where('questionnaire_id', $q->id)
+                ->where('role_id', $activeRoleId)
                 ->exists();
 
-            $questionnaire->status     = $hasAnswered ? 'Diisi' : 'Belum Diisi';
-            $questionnaire->targetRole = collect($questionnaire->targets)->pluck('target_value')->implode(', ');
-            $questionnaire->dueDate    = $questionnaire->end_date;
+            $q->status     = $hasAnswered ? 'Diisi' : 'Belum Diisi';
+            $q->targetRole = collect($q->targets)->pluck('target_value')->implode(', ');
+            $q->dueDate    = $q->end_date;
 
-            if ($hasAnswered) {
-                $completedQuestionnairesCount++;
-            } else {
-                $uncompletedQuestionnairesCount++;
-            }
-
-            return $questionnaire;
+            $hasAnswered ? $completed++ : $uncompleted++;
+            return $q;
         });
 
-        return Inertia::render('Dashboard/User', [
-            'questionnaires'                 => $questionnaires,
-            'completedQuestionnairesCount'   => $completedQuestionnairesCount,
-            'uncompletedQuestionnairesCount' => $uncompletedQuestionnairesCount,
+        return [$mapped, $completed, $uncompleted];
+    }
+
+    private function dosenIndex($request, $activeRole, $user, $questionnaires)
+    {
+        $userId       = $user->id;
+        $activeRoleId = Session::get('active_role_id');
+
+        // Dosen bisa isi per prodi jadi status berbeda
+        $lecturerDetail = $user->lecturerDetail;
+        $completed      = 0;
+        $uncompleted    = 0;
+
+        $mapped = $questionnaires->map(function ($q) use ($userId, $activeRoleId, $lecturerDetail, &$completed, &$uncompleted) {
+            $hasAnswered = DB::table('answers')
+                ->where('user_id', $userId)
+                ->where('questionnaire_id', $q->id)
+                ->where('role_id', $activeRoleId)
+                ->exists();
+
+            $q->status     = $hasAnswered ? 'Diisi' : 'Belum Diisi';
+            $q->targetRole = collect($q->targets)->pluck('target_value')->implode(', ');
+            $q->dueDate    = $q->end_date;
+            $hasAnswered ? $completed++ : $uncompleted++;
+            return $q;
+        });
+
+        // Jadwal mengajar periode aktif
+        $lecturerScheduleInfo = null;
+        $activePeriod         = AcademicPeriod::where('is_active', true)->first();
+
+        if ($activePeriod && $lecturerDetail?->sevima_id) {
+            $cacheKey     = "lecturer_schedule_{$userId}_{$activePeriod->sevima_id}";
+            $scheduleData = Cache::remember($cacheKey, now()->addHours(1), function () use ($lecturerDetail, $activePeriod) {
+                return LecturerService::fetchLecturerSchedule($lecturerDetail->sevima_id, $activePeriod->sevima_id);
+            });
+
+            if ($scheduleData && ! empty($scheduleData['data'])) {
+                $rawProdi = collect($scheduleData['data'])
+                    ->where('attributes.is_deleted', '0')
+                    ->map(fn($item) => [
+                        'id_program_studi' => $item['attributes']['id_program_studi'],
+                        'program_studi'    => $item['attributes']['program_studi'],
+                    ])
+                    ->unique('id_program_studi')
+                    ->values();
+
+                $localProdi = ProgramStudy::whereIn('program_study_code', $rawProdi->pluck('id_program_studi'))
+                    ->pluck('degree_level', 'program_study_code');
+
+                $lecturerScheduleInfo = [
+                    'period_name' => $activePeriod->name,
+                    'prodi_list'  => $rawProdi->map(fn($p) => array_merge($p, [
+                        'degree_level' => $localProdi[$p['id_program_studi']] ?? null,
+                    ]))->toArray(),
+                    'total_prodi' => $rawProdi->count(),
+                ];
+            }
+        }
+
+        return Inertia::render('Dashboard/Dosen', [
+            'questionnaires'                 => $mapped,
+            'completedQuestionnairesCount'   => $completed,
+            'uncompletedQuestionnairesCount' => $uncompleted,
+            'lecturerScheduleInfo'           => $lecturerScheduleInfo,
+            'activePeriod'                   => $activePeriod,
+        ]);
+    }
+
+    private function mahasiswaIndex($request, $activeRole, $user, $questionnaires)
+    {
+        $userId                             = $user->id;
+        [$mapped, $completed, $uncompleted] = $this->buildQuestionnaireStats($questionnaires, $userId);
+
+        // Info prodi & fakultas mahasiswa
+        $studentInfo = null;
+        if ($user->studentDetail) {
+            $sd           = $user->studentDetail;
+            $programStudy = ProgramStudy::where('program_study_code', $sd->program_study_code)->first();
+            $studentInfo  = [
+                'nim'          => $sd->nim,
+                'prodi'        => $programStudy?->name,
+                'degree_level' => $programStudy?->degree_level,
+                'prodi_code'   => $sd->program_study_code,
+            ];
+        }
+
+        $activePeriod = AcademicPeriod::where('is_active', true)->first();
+
+        return Inertia::render('Dashboard/Mahasiswa', [
+            'questionnaires'                 => $mapped,
+            'completedQuestionnairesCount'   => $completed,
+            'uncompletedQuestionnairesCount' => $uncompleted,
+            'studentInfo'                    => $studentInfo,
+            'activePeriod'                   => $activePeriod,
+        ]);
+    }
+
+    private function pegawaiIndex($request, $activeRole, $user, $questionnaires)
+    {
+        $userId                             = $user->id;
+        [$mapped, $completed, $uncompleted] = $this->buildQuestionnaireStats($questionnaires, $userId);
+
+        $activePeriod = AcademicPeriod::where('is_active', true)->first();
+
+        return Inertia::render('Dashboard/Pegawai', [
+            'questionnaires'                 => $mapped,
+            'completedQuestionnairesCount'   => $completed,
+            'uncompletedQuestionnairesCount' => $uncompleted,
+            'activePeriod'                   => $activePeriod,
         ]);
     }
 }

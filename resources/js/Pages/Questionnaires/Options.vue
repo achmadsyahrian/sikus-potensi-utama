@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import QuestionnaireOptionTable from './Partials/QuestionnaireOptionTable.vue';
 import QuestionnaireInfoCard from './Partials/QuestionnaireInfoCard.vue';
+import QuestionnaireSidebarTabs from './Partials/QuestionnaireSidebarTabs.vue';
 
 const props = defineProps({
     questionnaire: Object,
@@ -17,10 +18,10 @@ const props = defineProps({
             <div class="row g-2 align-items-center">
                 <div class="col">
                     <div class="page-pretitle">Manajemen Kuesioner</div>
-                    <h2 class="page-title d-flex align-items-center">
-                        <span class="text-truncate" style="max-width: 500px;">Detail: {{ questionnaire.name }}</span>
-                        <span v-if="questionnaire.is_active" class="badge bg-green-lt ms-2 fs-6 align-middle">Aktif</span>
-                        <span v-else class="badge bg-secondary-lt ms-2 fs-6 align-middle">Draft</span>
+                    <h2 class="page-title d-flex align-items-center gap-2">
+                        <span class="text-truncate" style="max-width: 500px;">{{ questionnaire.name }}</span>
+                        <span v-if="questionnaire.is_active" class="badge bg-green-lt fs-6">Aktif</span>
+                        <span v-else class="badge bg-secondary-lt fs-6">Draft</span>
                     </h2>
                 </div>
                 <div class="col-auto ms-auto d-print-none">
@@ -31,92 +32,24 @@ const props = defineProps({
             </div>
         </template>
 
-        <div class="card">
-            <div class="card-header">
-                <ul class="nav nav-tabs card-header-tabs flex-nowrap overflow-auto custom-scrollbar">
-                    <li class="nav-item">
-                        <Link :href="route('questionnaires.show', questionnaire.id)" class="nav-link text-nowrap">
-                            <i class="fa-solid fa-circle-info me-2" style="opacity: 0.6"></i> Info Dasar
-                        </Link>
-                    </li>
-                    <li class="nav-item">
-                        <Link :href="route('questionnaires.categories', questionnaire.id)" class="nav-link text-nowrap">
-                            <i class="fa-solid fa-layer-group me-2" style="opacity: 0.6"></i> Kategori
-                        </Link>
-                    </li>
-                    <li class="nav-item">
-                        <Link :href="route('questionnaires.options', questionnaire.id)" class="nav-link active fw-bold text-nowrap">
-                            <i class="fa-solid fa-list-check me-2"></i> Opsi Jawaban
-                        </Link>
-                    </li>
-                    <li class="nav-item">
-                        <Link :href="route('questionnaires.questions', questionnaire.id)" class="nav-link text-nowrap">
-                            <i class="fa-solid fa-clipboard-question me-2" style="opacity: 0.6"></i> Pertanyaan
-                        </Link>
-                    </li>
-                    <li class="nav-item">
-                        <Link :href="route('questionnaires.results', questionnaire.id)" class="nav-link text-nowrap">
-                            <i class="fa-solid fa-chart-pie me-2" style="opacity: 0.6"></i> Hasil Analisis
-                        </Link>
-                    </li>
-                    <li class="nav-item">
-                        <Link :href="route('questionnaires.respondents', questionnaire.id)" class="nav-link text-nowrap">
-                            <i class="fa-solid fa-users me-2" style="opacity: 0.6"></i> Responden
-                        </Link>
-                    </li>
-                </ul>
-            </div>
+        <div class="row g-4">
+            <QuestionnaireSidebarTabs :questionnaire="questionnaire" />
 
-            <div class="card-body">
+            <div class="col-12 col-md-9 col-lg-10">
                 <QuestionnaireInfoCard :questionnaire="questionnaire" />
 
-                <div class="d-flex align-items-center justify-content-between pt-2 pb-4">
-                    <div>
-                        <h3 class="fw-bold mb-1">Manajemen Opsi</h3>
-                        <h5 class="op-7 mb-2 text-muted">Kelola opsi jawaban yang dapat digunakan kembali untuk pertanyaan kuesioner.</h5>
+                <div class="card border-0 shadow-sm mt-4">
+                    <div class="card-header border-0">
+                        <div>
+                            <h3 class="card-title fw-bold">Manajemen Opsi Jawaban</h3>
+                            <p class="card-subtitle text-muted small">Kelola opsi jawaban yang dapat digunakan kembali untuk pertanyaan kuesioner.</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <QuestionnaireOptionTable :questionnaire="questionnaire" :questionOptions="questionOptions" />
                     </div>
                 </div>
-
-                <QuestionnaireOptionTable
-                    :questionnaire="questionnaire"
-                    :questionOptions="questionOptions"
-                />
             </div>
         </div>
     </AuthenticatedLayout>
 </template>
-
-<style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-    height: 3px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #e2e8f0;
-    border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #cbd5e1;
-}
-.nav-tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 2px;
-}
-.nav-link.active {
-    border-bottom-color: #ffffff;
-    color: #206bc4 !important;
-}
-.nav-link {
-    color: #64748b;
-    transition: all 0.2s;
-    font-size: 0.9rem;
-}
-.nav-link:hover {
-    color: #1e293b;
-}
-</style>

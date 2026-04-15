@@ -5,16 +5,18 @@ import axios from 'axios';
 
 const props = defineProps({
     questionnaire: Object,
-    criteria: Array,
+    criteria:      Array,
     programStudies: Array,
-    roles: Array
+    roles:         Array,
+    defaultTab:    { type: String, default: 'category' },
+    showGlobal:    { type: Boolean, default: true },
 });
 
 const chartInstance  = ref(null);
 const isExporting    = ref(false);
 const isLoading      = ref(false);
 
-const activeTab              = ref('category');
+const activeTab = ref(props.defaultTab);
 const selectedCategoryFilter = ref('all');
 const selectedRoleFilter     = ref('all');
 const selectedProdiFilter    = ref('all');
@@ -255,7 +257,7 @@ onMounted(async () => {
         <div class="card-body">
             <div class="row">
 
-                <div class="col-md-4 border-end-md d-flex flex-column align-items-center justify-content-center py-4">
+                <div v-if="showGlobal" class="col-md-4 border-end-md d-flex flex-column align-items-center justify-content-center py-4">
                     <div class="text-muted fw-bold text-uppercase small tracking-wide">Indeks Kepuasan Global</div>
                     <div class="display-1 fw-bold my-3 text-dark">{{ overallStats.score }}%</div>
 
@@ -279,7 +281,7 @@ onMounted(async () => {
                     </div>
                 </div>
 
-                <div class="col-md-8 ps-md-0">
+                <div :class="showGlobal ? 'col-md-8' : 'col-12'" class="ps-md-0">
                     <div class="border-bottom bg-light-lt px-3 pt-3">
                         <ul class="nav nav-tabs card-header-tabs" style="margin-bottom: -1px;">
                             <li class="nav-item">

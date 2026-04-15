@@ -12,6 +12,7 @@ class LecturerDetail extends Model
 
     protected $fillable = [
         'user_id',
+        'sevima_id',
         'nidn',
         'work_unit',
         'functional_position',

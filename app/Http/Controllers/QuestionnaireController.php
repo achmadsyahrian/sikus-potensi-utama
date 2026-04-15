@@ -155,17 +155,14 @@ class QuestionnaireController extends Controller
         $baseData             = $this->getBaseViewData();
         $satisfactionCriteria = \App\Models\SatisfactionCriterion::orderBy('min_value', 'asc')->get();
 
-        // 1. AGREGASI UNTUK CHART PER-PERTANYAAN
         $questionStatsRaw = DB::table('answers')
             ->where('questionnaire_id', $questionnaire->id)
             ->select('question_id', 'answer_value', DB::raw('count(*) as total'))
             ->groupBy('question_id', 'answer_value')
             ->get();
 
-        // Kelompokkan berdasarkan ID Pertanyaan untuk Frontend
         $questionStats = $questionStatsRaw->groupBy('question_id');
 
-        // 2. AGREGASI UNTUK CHART SUMMARY
         $summaryStats = DB::table('answers')
             ->join('questions', 'answers.question_id', '=', 'questions.id')
             ->leftJoin('respondent_externals', 'answers.respondent_external_id', '=', 'respondent_externals.id')
@@ -181,7 +178,6 @@ class QuestionnaireController extends Controller
             ->groupBy('questions.category_id', 'answers.answer_value', 'answers.role_id', 'respondent_externals.role')
             ->get();
 
-        // 3. AMBIL PREVIEW JAWABAN ESSAY
         $essayQuestions = $questionnaire->questions->where('question_type', '!=', 'multiple_choice');
         $essayPreviews  = [];
         $essayCounts    = [];
@@ -195,6 +191,61 @@ class QuestionnaireController extends Controller
             $essayCounts[$q->id] = Answer::where('question_id', $q->id)->count();
         }
 
+        // ── KPI Data ───────────────────────────────────────────────────────
+        $maxScale = DB::table('question_options')
+            ->where('questionnaire_id', $questionnaire->id)
+            ->max('option_value') ?: 4;
+
+        // Total responden unik (internal + eksternal)
+        $totalInternal = DB::table('answers')
+            ->where('questionnaire_id', $questionnaire->id)
+            ->whereNotNull('user_id')
+            ->distinct('user_id')
+            ->count('user_id');
+
+        $totalExternal = DB::table('answers')
+            ->where('questionnaire_id', $questionnaire->id)
+            ->whereNotNull('respondent_external_id')
+            ->distinct('respondent_external_id')
+            ->count('respondent_external_id');
+
+        $totalRespondents = $totalInternal + $totalExternal;
+
+        // Skor per kategori untuk KPI
+        $categoryScores = DB::table('answers')
+            ->join('questions', 'answers.question_id', '=', 'questions.id')
+            ->join('question_categories', 'questions.category_id', '=', 'question_categories.id')
+            ->where('answers.questionnaire_id', $questionnaire->id)
+            ->where('questions.question_type', 'multiple_choice')
+            ->select(
+                'question_categories.id as category_id',
+                'question_categories.name as category_name',
+                DB::raw('ROUND((SUM(answers.answer_value) / (COUNT(answers.id) * ' . $maxScale . ')) * 100, 1) as score')
+            )
+            ->groupBy('question_categories.id', 'question_categories.name')
+            ->orderByDesc('score')
+            ->get();
+
+        $bestCategory  = $categoryScores->first();
+        $worstCategory = $categoryScores->last();
+
+        // Breakdown responden per role
+        $respondentBreakdown = DB::table('answers')
+            ->join('roles', 'answers.role_id', '=', 'roles.id')
+            ->where('answers.questionnaire_id', $questionnaire->id)
+            ->whereNotNull('answers.user_id')
+            ->select('roles.name as role_name', DB::raw('COUNT(DISTINCT answers.user_id) as total'))
+            ->groupBy('roles.name')
+            ->get();
+
+        $externalBreakdown = DB::table('answers')
+            ->join('respondent_externals', 'answers.respondent_external_id', '=', 'respondent_externals.id')
+            ->where('answers.questionnaire_id', $questionnaire->id)
+            ->whereNotNull('answers.respondent_external_id')
+            ->select('respondent_externals.role as role_name', DB::raw('COUNT(DISTINCT answers.respondent_external_id) as total'))
+            ->groupBy('respondent_externals.role')
+            ->get();
+
         return Inertia::render('Questionnaires/Results', array_merge($baseData, [
             'questionnaire'        => $questionnaire,
             'satisfactionCriteria' => $satisfactionCriteria,
@@ -202,6 +253,14 @@ class QuestionnaireController extends Controller
             'summaryStats'         => $summaryStats,
             'essayPreviews'        => $essayPreviews,
             'essayCounts'          => $essayCounts,
+            'categoryScores'       => $categoryScores,
+            'bestCategory'         => $bestCategory,
+            'worstCategory'        => $worstCategory,
+            'totalRespondents'     => $totalRespondents,
+            'totalInternal'        => $totalInternal,
+            'totalExternal'        => $totalExternal,
+            'respondentBreakdown'  => $respondentBreakdown,
+            'externalBreakdown'    => $externalBreakdown,
         ]));
     }
 
@@ -391,11 +450,8 @@ class QuestionnaireController extends Controller
             ->orderBy('name', 'asc')
             ->get();
         $faculties      = Faculty::orderBy('name', 'asc')->get();
-        $programStudies = DB::table('program_studies')
-        // ->where('is_active', true)
-            ->select('program_study_code', 'name', 'degree_level')
-            ->orderBy('name', 'asc')
-            ->get();
+        $programStudies = ProgramStudy::orderBy('name', 'asc')
+            ->get(['id', 'program_study_code', 'name', 'degree_level', 'faculty_code']);
 
         return compact('academicPeriods', 'roles', 'faculties', 'programStudies');
     }
@@ -499,15 +555,17 @@ class QuestionnaireController extends Controller
 
     public function getAnalysisData(Request $request, Questionnaire $questionnaire)
     {
-        $filterRole     = $request->get('role', 'all');
-        $filterProdi    = $request->get('prodi', 'all');
-        $filterCategory = $request->get('category', 'all');
+        $filterRole        = $request->get('role', 'all');
+        $filterProdi       = $request->get('prodi', 'all');
+        $filterCategory    = $request->get('category', 'all');
+        $filterTab         = $request->get('tab', 'category');
+        $filterStakeholder = $request->get('stakeholder', 'mahasiswa');
 
         $maxScale = \DB::table('question_options')
             ->where('questionnaire_id', $questionnaire->id)
             ->max('option_value') ?: 4;
 
-        // ── Skor Per Kategori ──────────────────────────────────────────
+        // ── Skor Per Kategori ──────────────────────────────────────────────
         $categoryStats = [];
         foreach ($questionnaire->categories as $category) {
             $query = \DB::table('answers')
@@ -516,7 +574,6 @@ class QuestionnaireController extends Controller
                 ->where('questions.category_id', $category->id)
                 ->where('questions.question_type', 'multiple_choice');
 
-            // Filter role
             if ($filterRole !== 'all') {
                 if ($filterRole === 'external_all') {
                     $query->whereNotNull('answers.respondent_external_id');
@@ -532,77 +589,186 @@ class QuestionnaireController extends Controller
 
             if ($stats->total_answers > 0) {
                 $pct             = round(($stats->total_score / ($stats->total_answers * $maxScale)) * 100, 1);
-                $categoryStats[] = [
-                    'id'    => $category->id,
-                    'name'  => $category->name,
-                    'score' => $pct,
-                ];
+                $categoryStats[] = ['id' => $category->id, 'name' => $category->name, 'score' => $pct];
             }
         }
 
-        // ── Skor Per Prodi (Mahasiswa) ─────────────────────────────────
+        // ── Skor Per Prodi ─────────────────────────────────────────────────
         $prodiStats = [];
         $mhsRole    = \App\Models\Role::where('name', 'Mahasiswa')->first();
+        $dosenRole  = \App\Models\Role::where('name', 'Dosen')->first();
 
-        if ($mhsRole) {
-            if ($filterProdi !== 'all') {
-                // Detail: skor per kategori untuk 1 prodi
-                foreach ($questionnaire->categories as $category) {
-                    $stats = \DB::table('answers')
+        if ($filterTab === 'prodi') {
+
+            // ── Mahasiswa ──────────────────────────────────────────────────
+            if ($filterStakeholder === 'mahasiswa' && $mhsRole) {
+                if ($filterProdi !== 'all') {
+                    foreach ($questionnaire->categories as $category) {
+                        $stats = \DB::table('answers')
+                            ->join('questions', 'answers.question_id', '=', 'questions.id')
+                            ->join('student_details', 'answers.user_id', '=', 'student_details.user_id')
+                            ->where('answers.questionnaire_id', $questionnaire->id)
+                            ->where('questions.category_id', $category->id)
+                            ->where('questions.question_type', 'multiple_choice')
+                            ->where('answers.role_id', $mhsRole->id)
+                            ->where('student_details.program_study_code', $filterProdi)
+                            ->selectRaw('SUM(answers.answer_value) as total_score, COUNT(answers.id) as total_answers')
+                            ->first();
+
+                        if ($stats->total_answers > 0) {
+                            $pct          = round(($stats->total_score / ($stats->total_answers * $maxScale)) * 100, 1);
+                            $prodiStats[] = ['name' => $category->name, 'score' => $pct];
+                        }
+                    }
+                } else {
+                    $query = \DB::table('answers')
                         ->join('questions', 'answers.question_id', '=', 'questions.id')
                         ->join('student_details', 'answers.user_id', '=', 'student_details.user_id')
+                        ->join('program_studies', 'student_details.program_study_code', '=', 'program_studies.program_study_code')
                         ->where('answers.questionnaire_id', $questionnaire->id)
-                        ->where('questions.category_id', $category->id)
-                        ->where('questions.question_type', 'multiple_choice')
                         ->where('answers.role_id', $mhsRole->id)
-                        ->where('student_details.program_study_code', $filterProdi)
-                        ->selectRaw('SUM(answers.answer_value) as total_score, COUNT(answers.id) as total_answers')
-                        ->first();
+                        ->where('questions.question_type', 'multiple_choice');
 
-                    if ($stats->total_answers > 0) {
-                        $pct          = round(($stats->total_score / ($stats->total_answers * $maxScale)) * 100, 1);
-                        $prodiStats[] = ['name' => $category->name, 'score' => $pct];
+                    if ($filterCategory !== 'all') {
+                        $query->where('questions.category_id', $filterCategory);
+                    }
+
+                    $results = $query
+                        ->select('program_studies.name as prodi_name', 'program_studies.degree_level', 'student_details.program_study_code')
+                        ->selectRaw('SUM(answers.answer_value) as total_score, COUNT(answers.id) as total_answers')
+                        ->groupBy('student_details.program_study_code', 'program_studies.name', 'program_studies.degree_level')
+                        ->get();
+
+                    foreach ($results as $row) {
+                        $pct          = round(($row->total_score / ($row->total_answers * $maxScale)) * 100, 1);
+                        $prodiStats[] = [
+                            'name'         => $row->prodi_name,
+                            'degree_level' => $row->degree_level,
+                            'code'         => $row->program_study_code,
+                            'score'        => $pct,
+                        ];
                     }
                 }
-            } else {
-                // Banding: skor per prodi (bisa filter kategori)
-                $query = \DB::table('answers')
-                    ->join('questions', 'answers.question_id', '=', 'questions.id')
-                    ->join('student_details', 'answers.user_id', '=', 'student_details.user_id')
-                    ->join('program_studies', 'student_details.program_study_code', '=', 'program_studies.program_study_code')
-                    ->where('answers.questionnaire_id', $questionnaire->id)
-                    ->where('answers.role_id', $mhsRole->id)
-                    ->where('questions.question_type', 'multiple_choice');
+            }
 
-                if ($filterCategory !== 'all') {
-                    $query->where('questions.category_id', $filterCategory);
+            // ── Dosen ──────────────────────────────────────────────────────
+            if ($filterStakeholder === 'dosen' && $dosenRole) {
+                if ($filterProdi !== 'all') {
+                    foreach ($questionnaire->categories as $category) {
+                        $stats = \DB::table('answers')
+                            ->join('questions', 'answers.question_id', '=', 'questions.id')
+                            ->where('answers.questionnaire_id', $questionnaire->id)
+                            ->where('questions.category_id', $category->id)
+                            ->where('questions.question_type', 'multiple_choice')
+                            ->where('answers.role_id', $dosenRole->id)
+                            ->where('answers.lecturer_program_study_code', $filterProdi)
+                            ->selectRaw('SUM(answers.answer_value) as total_score, COUNT(answers.id) as total_answers')
+                            ->first();
+
+                        if ($stats->total_answers > 0) {
+                            $pct          = round(($stats->total_score / ($stats->total_answers * $maxScale)) * 100, 1);
+                            $prodiStats[] = ['name' => $category->name, 'score' => $pct];
+                        }
+                    }
+                } else {
+                    $query = \DB::table('answers')
+                        ->join('questions', 'answers.question_id', '=', 'questions.id')
+                        ->join('program_studies', 'answers.lecturer_program_study_code', '=', 'program_studies.program_study_code')
+                        ->where('answers.questionnaire_id', $questionnaire->id)
+                        ->where('answers.role_id', $dosenRole->id)
+                        ->where('questions.question_type', 'multiple_choice')
+                        ->whereNotNull('answers.lecturer_program_study_code');
+
+                    if ($filterCategory !== 'all') {
+                        $query->where('questions.category_id', $filterCategory);
+                    }
+
+                    $results = $query
+                        ->select('program_studies.name as prodi_name', 'program_studies.degree_level', 'answers.lecturer_program_study_code as program_study_code')
+                        ->selectRaw('SUM(answers.answer_value) as total_score, COUNT(answers.id) as total_answers')
+                        ->groupBy('answers.lecturer_program_study_code', 'program_studies.name', 'program_studies.degree_level')
+                        ->get();
+
+                    foreach ($results as $row) {
+                        $pct          = round(($row->total_score / ($row->total_answers * $maxScale)) * 100, 1);
+                        $prodiStats[] = [
+                            'name'         => $row->prodi_name,
+                            'degree_level' => $row->degree_level,
+                            'code'         => $row->program_study_code,
+                            'score'        => $pct,
+                        ];
+                    }
                 }
+            }
 
-                $results = $query
-                    ->select('program_studies.name as prodi_name', 'student_details.program_study_code')
-                    ->selectRaw('SUM(answers.answer_value) as total_score, COUNT(answers.id) as total_answers')
-                    ->groupBy('student_details.program_study_code', 'program_studies.name')
-                    ->get();
+            // ── Eksternal ──────────────────────────────────────────────────
+            if ($filterStakeholder === 'eksternal') {
+                $externalRoleFilter = $filterRole !== 'all' ? $filterRole : null;
 
-                foreach ($results as $row) {
-                    $pct          = round(($row->total_score / ($row->total_answers * $maxScale)) * 100, 1);
-                    $prodiStats[] = [
-                        'name'  => $row->prodi_name,
-                        'code'  => $row->program_study_code,
-                        'score' => $pct,
-                    ];
+                if ($filterProdi !== 'all') {
+                    foreach ($questionnaire->categories as $category) {
+                        $query = \DB::table('answers')
+                            ->join('questions', 'answers.question_id', '=', 'questions.id')
+                            ->join('respondent_externals', 'answers.respondent_external_id', '=', 'respondent_externals.id')
+                            ->where('answers.questionnaire_id', $questionnaire->id)
+                            ->where('questions.category_id', $category->id)
+                            ->where('questions.question_type', 'multiple_choice')
+                            ->where('respondent_externals.program_study_code', $filterProdi);
+
+                        if ($externalRoleFilter && in_array($externalRoleFilter, ['alumni', 'mitra', 'pengguna_lulusan'])) {
+                            $query->where('respondent_externals.role', $externalRoleFilter);
+                        }
+
+                        $stats = $query->selectRaw('SUM(answers.answer_value) as total_score, COUNT(answers.id) as total_answers')->first();
+
+                        if ($stats->total_answers > 0) {
+                            $pct          = round(($stats->total_score / ($stats->total_answers * $maxScale)) * 100, 1);
+                            $prodiStats[] = ['name' => $category->name, 'score' => $pct];
+                        }
+                    }
+                } else {
+                    $query = \DB::table('answers')
+                        ->join('questions', 'answers.question_id', '=', 'questions.id')
+                        ->join('respondent_externals', 'answers.respondent_external_id', '=', 'respondent_externals.id')
+                        ->join('program_studies', 'respondent_externals.program_study_code', '=', 'program_studies.program_study_code')
+                        ->where('answers.questionnaire_id', $questionnaire->id)
+                        ->where('questions.question_type', 'multiple_choice')
+                        ->whereNotNull('respondent_externals.program_study_code');
+
+                    if ($externalRoleFilter && in_array($externalRoleFilter, ['alumni', 'mitra', 'pengguna_lulusan'])) {
+                        $query->where('respondent_externals.role', $externalRoleFilter);
+                    }
+
+                    if ($filterCategory !== 'all') {
+                        $query->where('questions.category_id', $filterCategory);
+                    }
+
+                    $results = $query
+                        ->select('program_studies.name as prodi_name', 'program_studies.degree_level', 'respondent_externals.program_study_code')
+                        ->selectRaw('SUM(answers.answer_value) as total_score, COUNT(answers.id) as total_answers')
+                        ->groupBy('respondent_externals.program_study_code', 'program_studies.name', 'program_studies.degree_level')
+                        ->get();
+
+                    foreach ($results as $row) {
+                        $pct          = round(($row->total_score / ($row->total_answers * $maxScale)) * 100, 1);
+                        $prodiStats[] = [
+                            'name'         => $row->prodi_name,
+                            'degree_level' => $row->degree_level,
+                            'code'         => $row->program_study_code,
+                            'score'        => $pct,
+                        ];
+                    }
                 }
             }
         }
 
-        // ── Global Score ───────────────────────────────────────────────
+        // ── Global Score ───────────────────────────────────────────────────
         $globalQuery = \DB::table('answers')
             ->join('questions', 'answers.question_id', '=', 'questions.id')
             ->where('answers.questionnaire_id', $questionnaire->id)
             ->where('questions.question_type', 'multiple_choice');
 
-        // 1. Jika di Tab Analisis Aspek (Category)
-        if (request()->get('tab') === 'category') {
+        if ($filterTab === 'category') {
             if ($filterRole !== 'all') {
                 if ($filterRole === 'external_all') {
                     $globalQuery->whereNotNull('answers.respondent_external_id');
@@ -615,20 +781,30 @@ class QuestionnaireController extends Controller
             }
         }
 
-        // 2. Jika di Tab Analisis Prodi
-        if (request()->get('tab') === 'prodi') {
-            // Pastikan hanya mengambil data Mahasiswa
-            if ($mhsRole) {
+        if ($filterTab === 'prodi') {
+            if ($filterStakeholder === 'mahasiswa' && $mhsRole) {
                 $globalQuery->where('answers.role_id', $mhsRole->id);
+                if ($filterProdi !== 'all') {
+                    $globalQuery->join('student_details', 'answers.user_id', '=', 'student_details.user_id')
+                        ->where('student_details.program_study_code', $filterProdi);
+                }
+            } elseif ($filterStakeholder === 'dosen' && $dosenRole) {
+                $globalQuery->where('answers.role_id', $dosenRole->id)
+                    ->whereNotNull('answers.lecturer_program_study_code');
+                if ($filterProdi !== 'all') {
+                    $globalQuery->where('answers.lecturer_program_study_code', $filterProdi);
+                }
+            } elseif ($filterStakeholder === 'eksternal') {
+                $globalQuery->join('respondent_externals as re_global', 'answers.respondent_external_id', '=', 're_global.id')
+                    ->whereNotNull('re_global.program_study_code');
+                if ($filterRole !== 'all' && in_array($filterRole, ['alumni', 'mitra', 'pengguna_lulusan'])) {
+                    $globalQuery->where('re_global.role', $filterRole);
+                }
+                if ($filterProdi !== 'all') {
+                    $globalQuery->where('re_global.program_study_code', $filterProdi);
+                }
             }
 
-            // Filter Prodi Spesifik
-            if ($filterProdi !== 'all') {
-                $globalQuery->join('student_details', 'answers.user_id', '=', 'student_details.user_id')
-                    ->where('student_details.program_study_code', $filterProdi);
-            }
-
-            // Filter Kategori/Aspek Spesifik
             if ($filterCategory !== 'all') {
                 $globalQuery->where('questions.category_id', $filterCategory);
             }

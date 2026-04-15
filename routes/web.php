@@ -108,6 +108,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/questionnaires/{questionnaire}/answers', [AnswerController::class, 'show'])->name('answers.show');
         Route::post('/questionnaires/{questionnaire}/answers', [AnswerController::class, 'store'])->name('answers.store');
         Route::get('/questionnaires/{questionnaire}/submitted-answers', [AnswerController::class, 'submitted'])->name('answers.submitted');
+        Route::get('/questionnaires/{questionnaire}/submitted-answers/by-prodi', [AnswerController::class, 'submittedByProdi'])->name('answers.submitted.prodi');
     });
 
 });
